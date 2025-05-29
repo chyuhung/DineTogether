@@ -19,6 +19,17 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
             return
         }
+        // 检查菜名是否已存在
+        var count int
+        err := db.QueryRow("SELECT COUNT(*) FROM menus WHERE name = ?", menu.Name).Scan(&count)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "检查菜名失败"})
+            return
+        }
+        if count > 0 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
+            return
+        }
         result, err := db.Exec("INSERT INTO menus (name, description, energy_cost) VALUES (?, ?, ?)",
             menu.Name, menu.Description, menu.EnergyCost)
         if err != nil {
@@ -82,6 +93,17 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
         }
         if menu.Name == "" || menu.EnergyCost <= 0 {
             c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
+            return
+        }
+        // 检查菜名是否与其他菜谱重复
+        var count int
+        err = db.QueryRow("SELECT COUNT(*) FROM menus WHERE name = ? AND id != ?", menu.Name, id).Scan(&count)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "检查菜名失败"})
+            return
+        }
+        if count > 0 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
             return
         }
         result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ? WHERE id = ?",

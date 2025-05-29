@@ -41,10 +41,10 @@
                 menuList.innerHTML = '';
                 menus.forEach((menu, index) => {
                     menuList.innerHTML += `
-                        <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
+                        <div class="p-4 bg-white rounded-xl shadow-md mb-4 cardFadeIn" style="animation-delay: ${index * 0.1}s">
                             <h3 class="text-xl font-bold text-gray-800">${menu.name}</h3>
-                            <p class="text-gray-600">${menu.description}</p>
-                            <p class="text-sm text-purple-600">所需精力值: ${menu.energy_cost}</p>
+                            <p class="text-gray-600">${menu.description || '无描述'}</p>
+                            <p class="text-sm text-purple-600">所需精力值：${menu.energy_cost}</p>
                             <button onclick="editMenu(${menu.id})" class="mt-2 bg-blue-500 text-white p-2 rounded-lg font-semibold btn-hover">
                                 编辑
                             </button>
@@ -66,7 +66,7 @@
                 }
                 document.getElementById('edit_id').value = menu.id;
                 document.getElementById('edit_name').value = menu.name;
-                document.getElementById('edit_description').value = menu.description;
+                document.getElementById('edit_description').value = menu.description || '';
                 document.getElementById('edit_energy_cost').value = menu.energy_cost;
                 document.getElementById('edit_form').classList.remove('hidden');
             } catch (error) {
@@ -99,26 +99,26 @@
                     alert(result.error || '更新失败，请重试！');
                 }
             } catch (error) {
-                alert('网络错误，请稍后重试！');
+                alert('操作失败，请稍后重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-700 min-h-screen font-sans">
     <div class="container mx-auto p-4 max-w-3xl">
         <h1 class="text-3xl font-bold text-center text-white mb-6">编辑 DineTogether 菜谱</h1>
         <div id="menu-list" class="flex flex-col space-y-4 mb-6"></div>
         <div id="edit_form" class="hidden bg-white rounded-2xl shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">修改菜品</h2>
-            <input id="edit_id" type="hidden">
-            <div class="flex flex-col space-y-4">
-                <input id="edit_name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <textarea id="edit_description" placeholder="菜品描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"></textarea>
-                <input id="edit_energy_cost" type="number" placeholder="所需精力值" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="updateMenu()" class="bg-blue-500 text-white p-3 rounded-lg font-semibold btn-hover">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">修改菜谱</h2>
+            <form id="form" class="flex flex-col space-y-4">
+                <input id="edit_id" type="hidden">
+                <input id="edit_name" name="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <textarea id="edit_description" name="description" placeholder="菜品描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"></textarea>
+                <input id="edit_energy_cost" name="energy_cost" type="number" placeholder="所需能量值" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="button" onclick="updateMenu()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
                     更新菜谱
                 </button>
-            </div>
+            </form>
         </div>
     </div>
 </body>
