@@ -19,50 +19,103 @@
         }
     </style>
     <script>
-        window.onload = function() {
+        window.onload = async function() {
+            const container = document.getElementById('action-container');
             const userId = localStorage.getItem('user_id');
             const role = localStorage.getItem('role');
-            const container = document.getElementById('action-container');
-            if (userId) {
+            if (!userId) {
+                location.href = '/login';
+                return;
+            }
+
+            if (role === 'admin') {
                 container.innerHTML = `
-                    <button onclick="location.href='/join-party'" class="bg-purple-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                        加入 Party
+                    <button onclick="location.href='/menu-manage'" class="btn bg-green-600 text-white p-3 rounded-lg font-semibold mb-2">
+                        菜谱管理
                     </button>
-                    <button onclick="location.href='/order'" class="bg-blue-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                        开始点餐
+                    <button onclick="location.href='/party-manage'" class="btn bg-blue-600 text-white p-3 rounded-lg font-semibold mb-2">
+                        Party 管理
+                    </button>
+                    <button onclick="location.href='/user-manage'" class="btn bg-purple-600 text-white p-3 rounded-lg font-semibold mb-2">
+                        人员管理
+                    </button>
+                    <button onclick="logout()" class="btn bg-gray-600 text-white p-3 rounded-lg font-semibold">
+                        退出登录
                     </button>
                 `;
-                if (role === 'admin') {
-                    container.innerHTML += `
-                        <button onclick="location.href='/create-party'" class="bg-green-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                            创建 Party
-                        </button>
-                        <button onclick="location.href='/menu'" class="bg-teal-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                            创建菜谱
-                        </button>
-                        <button onclick="location.href='/edit-menu'" class="bg-indigo-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                            编辑菜谱
-                        </button>
-                    `;
-                }
             } else {
-                container.innerHTML = `
-                    <button onclick="location.href='/login'" class="bg-purple-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                        登录
-                    </button>
-                    <button onclick="location.href='/register'" class="bg-blue-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                        注册
-                    </button>
-                `;
+                try {
+                    const response = await fetch('/api/check-party', {
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (result.hasParty) {
+                        container.innerHTML = `
+                            <button onclick="location.href='/order'" class="btn bg-blue-600 text-white p-3 rounded-lg font-semibold mb-2">
+                                开始点餐
+                            </button>
+                            <button onclick="leaveParty()" class="btn bg-red-600 text-white p-3 rounded-lg font-semibold mb-2">
+                                离开 Party
+                            </button>
+                            <button onclick="logout()" class="btn bg-gray-600 text-white p-3 rounded-lg font-semibold">
+                                退出登录
+                            </button>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <button onclick="location.href='/join-party'" class="btn bg-blue-600 text-white p-3 rounded-lg font-semibold mb-2">
+                                加入 Party
+                            </button>
+                            <button onclick="logout()" class="btn bg-gray-600 text-white p-3 rounded-lg font-semibold">
+                                退出登录
+                            </button>
+                        `;
+                    }
+                } catch (error) {
+                    container.innerHTML = '<p class="error text-red-600">加载状态失败，请刷新</p>';
+                }
+            }
+        }
+
+        async function logout() {
+            if (!confirm('确定要退出吗？')) return;
+            try {
+                const response = await fetch('/logout', { credentials: 'include' });
+                if (response.ok) {
+                    localStorage.clear();
+                    location.href = '/login';
+                } else {
+                    alert('退出失败，请重试！');
+                }
+            }catch (error) {
+                alert('网络错误，请重试！');
+            }
+        }
+
+        async function leaveParty() {
+            if (!confirm('确定要离开 Party 吗？')) return;
+            try {
+                const response = await fetch('/leave-party', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.message === '已离开 Party') {
+                    location.reload();
+                } else {
+                    alert(result.error || '离开 Party 失败，请重试！');
+                }
+            } catch (error) {
+                alert('网络错误，请重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-purple-600 to-blue-500 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">欢迎加入 DineTogether</h1>
-            <p class="text-center text-gray-600 mb-8">与朋友一起点餐，分享美食乐趣！</p>
+            <p class="text-center text-gray-600 mb-6">与朋友一起点餐，分享美食乐趣！</p>
             <div id="action-container" class="flex flex-col space-y-4"></div>
         </div>
     </div>

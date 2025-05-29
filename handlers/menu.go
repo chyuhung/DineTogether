@@ -19,21 +19,14 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
             return
         }
-        // 检查菜名是否已存在
-        var count int
-        err := db.QueryRow("SELECT COUNT(*) FROM menus WHERE name = ?", menu.Name).Scan(&count)
-        if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "检查菜名失败"})
-            return
-        }
-        if count > 0 {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
-            return
-        }
         result, err := db.Exec("INSERT INTO menus (name, description, energy_cost) VALUES (?, ?, ?)",
             menu.Name, menu.Description, menu.EnergyCost)
         if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "创建菜谱失败"})
+            if err.Error() == "UNIQUE constraint failed: menus.name" {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
+            } else {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "创建菜谱失败"})
+            }
             return
         }
         id, _ := result.LastInsertId()
@@ -95,21 +88,14 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
             return
         }
-        // 检查菜名是否与其他菜谱重复
-        var count int
-        err = db.QueryRow("SELECT COUNT(*) FROM menus WHERE name = ? AND id != ?", menu.Name, id).Scan(&count)
-        if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "检查菜名失败"})
-            return
-        }
-        if count > 0 {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
-            return
-        }
         result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ? WHERE id = ?",
             menu.Name, menu.Description, menu.EnergyCost, id)
         if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "更新菜谱失败"})
+            if err.Error() == "UNIQUE constraint failed: menus.name" {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "菜名已存在，请选择其他名称"})
+            } else {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "更新菜谱失败"})
+            }
             return
         }
         rowsAffected, _ := result.RowsAffected()
@@ -118,5 +104,26 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
             return
         }
         c.JSON(http.StatusOK, gin.H{"message": "菜谱更新成功"})
+    }
+}
+
+func DeleteMenu(db *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "无效的菜谱 ID"})
+            return
+        }
+        result, err := db.Exec("DELETE FROM menus WHERE id = ?", id)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "删除菜谱失败"})
+            return
+        }
+        rowsAffected, _ := result.RowsAffected()
+        if rowsAffected == 0 {
+            c.JSON(http.StatusNotFound, gin.H{"error": "菜谱不存在"})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"message": "菜谱删除成功"})
     }
 }

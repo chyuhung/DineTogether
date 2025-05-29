@@ -20,18 +20,23 @@ func Register(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "用户名和密码不能为空"})
             return
         }
+        if user.Role != "guest" && user.Role != "admin" {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色"})
+            return
+        }
         hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
             return
         }
-        if user.Role != "admin" {
-            user.Role = "guest"
-        }
         _, err = db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
             user.Username, string(hashedPassword), user.Role)
         if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
+            if err.Error() == "UNIQUE constraint failed: users.username" {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
+            } else {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "注册失败"})
+            }
             return
         }
         c.JSON(http.StatusOK, gin.H{"message": "注册成功"})
@@ -40,32 +45,44 @@ func Register(db *sql.DB) gin.HandlerFunc {
 
 func Login(db *sql.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
-        var user models.User
-        if err := c.ShouldBindJSON(&user); err != nil {
+        var loginRequest struct {
+            Username string `json:"username"`
+            Password string `json:"password"`
+        }
+        if err := c.ShouldBindJSON(&loginRequest); err != nil {
             c.JSON(http.StatusBadRequest, gin.H{"error": "无效的输入"})
             return
         }
-        var storedUser models.User
-        row := db.QueryRow("SELECT id, username, password, role FROM users WHERE username = ?", user.Username)
-        if err := row.Scan(&storedUser.ID, &storedUser.Username, &storedUser.Password, &storedUser.Role); err != nil {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "用户不存在"})
+        var user models.User
+        row := db.QueryRow("SELECT id, username, password, role FROM users WHERE username = ?", loginRequest.Username)
+        if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Role); err != nil {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
             return
         }
-        if err := bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(user.Password)); err != nil {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
+        if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
             return
         }
         session := sessions.Default(c)
-        session.Set("user_id", storedUser.ID)
-        session.Set("role", storedUser.Role)
+        session.Set("user_id", user.ID)
+        session.Set("role", user.Role)
         if err := session.Save(); err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "保存会话失败"})
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "保存 session 失败"})
             return
         }
-        c.JSON(http.StatusOK, gin.H{
-            "message": "登录成功",
-            "user_id": storedUser.ID,
-            "role":    storedUser.Role,
-        })
+        c.JSON(http.StatusOK, gin.H{"message": "登录成功", "user_id": user.ID, "role": user.Role})
+    }
+}
+
+func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        session := sessions.Default(c)
+        role := session.Get("role")
+        if role != "admin" {
+            c.JSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
+            c.Abort()
+            return
+        }
+        c.Next()
     }
 }

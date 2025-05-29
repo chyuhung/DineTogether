@@ -19,6 +19,13 @@
         }
     </style>
     <script>
+        window.onload = function() {
+            const userId = localStorage.getItem('user_id');
+            if (userId) {
+                location.href = '/';
+            }
+        }
+
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -26,18 +33,18 @@
                 alert('请填写用户名和密码！');
                 return;
             }
+
             try {
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),
-                    credentials: 'include' // 确保携带 cookie
+                    credentials: 'include'
                 });
                 const result = await response.json();
                 if (result.message === '登录成功') {
                     localStorage.setItem('user_id', result.user_id);
                     localStorage.setItem('role', result.role);
-                    alert('登录成功！');
                     location.href = '/';
                 } else {
                     alert(result.error || '登录失败，请重试！');
@@ -48,18 +55,18 @@
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-purple-600 to-blue-500 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 登录</h1>
-            <div class="flex flex-col space-y-4">
-                <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <button onclick="login()" class="bg-purple-500 text-white p-3 rounded-lg font-semibold btn-hover">
-                    立即登录
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">登录 DineTogether</h1>
+            <form id="form" class="flex flex-col space-y-4">
+                <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <button type="button" onclick="login()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
+                    登录
                 </button>
-                <p class="text-center text-gray-600">还没有账号？<a href="/register" class="text-blue-500 hover:underline">去注册</a></p>
-            </div>
+                <p class="text-center text-gray-500">没有账号？<a href="/register" class="text-blue-600">注册</a></p>
+            </form>
         </div>
     </div>
 </body>
