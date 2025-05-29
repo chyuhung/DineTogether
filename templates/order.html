@@ -3,21 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>点餐</title>
+    <title>DineTogether - 点餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 卡片动画 */
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card-fade-in {
+            animation: cardFadeIn 0.3s ease-out;
+        }
+        /* 按钮悬浮效果 */
+        .btn-hover:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s ease-in-out;
+        }
+    </style>
     <script>
         async function loadMenus() {
             const response = await fetch('/menus');
             const menus = await response.json();
             const menuList = document.getElementById('menu-list');
             menuList.innerHTML = '';
-            menus.forEach(menu => {
+            menus.forEach((menu, index) => {
                 menuList.innerHTML += `
-                    <div class="p-4 bg-white rounded shadow">
-                        <h3 class="text-lg font-bold">${menu.name}</h3>
-                        <p>${menu.description}</p>
-                        <p>所需精力值: ${menu.energy_cost}</p>
-                        <button onclick="placeOrder(${menu.id})" class="bg-blue-500 text-white p-2 rounded">点餐</button>
+                    <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
+                        <h3 class="text-xl font-bold text-gray-800">${menu.name}</h3>
+                        <p class="text-gray-600">${menu.description}</p>
+                        <p class="text-sm text-purple-600">所需精力值: ${menu.energy_cost}</p>
+                        <button onclick="placeOrder(${menu.id})" class="mt-2 bg-blue-500 text-white p-2 rounded-lg font-semibold btn-hover">
+                            立即点餐
+                        </button>
                     </div>
                 `;
             });
@@ -26,21 +43,28 @@
         async function placeOrder(menuId) {
             const partyId = localStorage.getItem('party_id');
             const userId = localStorage.getItem('user_id');
+            if (!partyId || !userId) {
+                alert('请先登录并加入 Party！');
+                return;
+            }
             const response = await fetch('/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ party_id: partyId, user_id: userId, menu_id: menuId })
+                body: JSON.stringify({ party_id: parseInt(partyId), user_id: parseInt(userId), menu_id: menuId })
             });
             const result = await response.json();
             alert(result.message);
+            if (result.message === '订单提交成功') {
+                loadMenus(); // 刷新菜谱列表
+            }
         }
 
         window.onload = loadMenus;
     </script>
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold text-center mb-4">点餐</h1>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen font-sans">
+    <div class="container mx-auto p-4 max-w-2xl">
+        <h1 class="text-3xl font-bold text-center text-white mb-6">DineTogether 点餐</h1>
         <div id="menu-list" class="flex flex-col space-y-4"></div>
     </div>
 </body>
