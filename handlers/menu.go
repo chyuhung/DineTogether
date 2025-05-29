@@ -5,6 +5,7 @@ import (
     "DineTogether/models"
     "github.com/gin-gonic/gin"
     "net/http"
+    "strconv"
 )
 
 func CreateMenu(db *sql.DB) gin.HandlerFunc {
@@ -14,22 +15,18 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "无效的输入"})
             return
         }
-
-        // 仅限管理员权限
-        userRole := c.GetString("role")
-        if userRole != "admin" {
-            c.JSON(http.StatusForbidden, gin.H{"error": "无权限"})
+        if menu.Name == "" || menu.EnergyCost <= 0 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
             return
         }
-
-        _, err := db.Exec("INSERT INTO menus (name, description, energy_cost) VALUES (?, ?, ?)",
+        result, err := db.Exec("INSERT INTO menus (name, description, energy_cost) VALUES (?, ?, ?)",
             menu.Name, menu.Description, menu.EnergyCost)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "创建菜谱失败"})
             return
         }
-
-        c.JSON(http.StatusOK, gin.H{"message": "菜谱创建成功"})
+        id, _ := result.LastInsertId()
+        c.JSON(http.StatusOK, gin.H{"message": "菜谱创建成功", "menu_id": id})
     }
 }
 
@@ -41,7 +38,6 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
             return
         }
         defer rows.Close()
-
         var menus []models.Menu
         for rows.Next() {
             var menu models.Menu
@@ -51,7 +47,54 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
             }
             menus = append(menus, menu)
         }
-
         c.JSON(http.StatusOK, menus)
+    }
+}
+
+func GetMenuByID(db *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "无效的菜谱 ID"})
+            return
+        }
+        var menu models.Menu
+        row := db.QueryRow("SELECT id, name, description, energy_cost FROM menus WHERE id = ?", id)
+        if err := row.Scan(&menu.ID, &menu.Name, &menu.Description, &menu.EnergyCost); err != nil {
+            c.JSON(http.StatusNotFound, gin.H{"error": "菜谱不存在"})
+            return
+        }
+        c.JSON(http.StatusOK, menu)
+    }
+}
+
+func UpdateMenu(db *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "无效的菜谱 ID"})
+            return
+        }
+        var menu models.Menu
+        if err := c.ShouldBindJSON(&menu); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "无效的输入"})
+            return
+        }
+        if menu.Name == "" || menu.EnergyCost <= 0 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和能量值不能为空或无效"})
+            return
+        }
+        result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ? WHERE id = ?",
+            menu.Name, menu.Description, menu.EnergyCost, id)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "更新菜谱失败"})
+            return
+        }
+        rowsAffected, _ := result.RowsAffected()
+        if rowsAffected == 0 {
+            c.JSON(http.StatusNotFound, gin.H{"error": "菜谱不存在"})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"message": "菜谱更新成功"})
     }
 }

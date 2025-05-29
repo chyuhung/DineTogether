@@ -6,7 +6,6 @@
     <title>DineTogether - 注册</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 自定义动画 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -14,7 +13,6 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
-        /* 按钮悬浮效果 */
         .btn-hover:hover {
             transform: scale(1.05);
             transition: transform 0.2s ease-in-out;
@@ -29,17 +27,21 @@
                 alert('请填写用户名和密码！');
                 return;
             }
-            const response = await fetch('/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, role })
-            });
-            const result = await response.json();
-            if (result.message === '注册成功') {
-                alert('注册成功！请登录。');
-                location.href = '/login';
-            } else {
-                alert(result.error || '注册失败，请重试！');
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                });
+                const result = await response.json();
+                if (result.message === '注册成功') {
+                    alert('注册成功！请登录。');
+                    location.href = '/login';
+                } else {
+                    alert(result.error || '注册失败，请重试！');
+                }
+            } catch (error) {
+                alert('网络错误，请稍后重试！');
             }
         }
     </script>

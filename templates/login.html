@@ -30,7 +30,8 @@
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include' // 确保携带 cookie
                 });
                 const result = await response.json();
                 if (result.message === '登录成功') {

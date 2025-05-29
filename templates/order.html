@@ -6,7 +6,6 @@
     <title>DineTogether - 点餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 卡片动画 */
         @keyframes cardFadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -14,52 +13,69 @@
         .card-fade-in {
             animation: cardFadeIn 0.3s ease-out;
         }
-        /* 按钮悬浮效果 */
         .btn-hover:hover {
             transform: scale(1.05);
             transition: transform 0.2s ease-in-out;
         }
     </style>
     <script>
+        window.onload = function() {
+            const userId = localStorage.getItem('user_id');
+            const partyId = localStorage.getItem('party_id');
+            if (!userId) {
+                alert('请先登录！');
+                location.href = '/login';
+                return;
+            }
+            if (!partyId) {
+                alert('请先加入 Party！');
+                location.href = '/join-party';
+                return;
+            }
+            loadMenus();
+        }
+
         async function loadMenus() {
-            const response = await fetch('/menus');
-            const menus = await response.json();
-            const menuList = document.getElementById('menu-list');
-            menuList.innerHTML = '';
-            menus.forEach((menu, index) => {
-                menuList.innerHTML += `
-                    <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
-                        <h3 class="text-xl font-bold text-gray-800">${menu.name}</h3>
-                        <p class="text-gray-600">${menu.description}</p>
-                        <p class="text-sm text-purple-600">所需精力值: ${menu.energy_cost}</p>
-                        <button onclick="placeOrder(${menu.id})" class="mt-2 bg-blue-500 text-white p-2 rounded-lg font-semibold btn-hover">
-                            立即点餐
-                        </button>
-                    </div>
-                `;
-            });
+            try {
+                const response = await fetch('/menus');
+                const menus = await response.json();
+                const menuList = document.getElementById('menu-list');
+                menuList.innerHTML = '';
+                menus.forEach((menu, index) => {
+                    menuList.innerHTML += `
+                        <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
+                            <h3 class="text-xl font-bold text-gray-800">${menu.name}</h3>
+                            <p class="text-gray-600">${menu.description}</p>
+                            <p class="text-sm text-purple-600">所需精力值: ${menu.energy_cost}</p>
+                            <button onclick="placeOrder(${menu.id})" class="mt-2 bg-blue-500 text-white p-2 rounded-lg font-semibold btn-hover">
+                                立即点餐
+                            </button>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                alert('加载菜谱失败，请稍后重试！');
+            }
         }
 
         async function placeOrder(menuId) {
             const partyId = localStorage.getItem('party_id');
             const userId = localStorage.getItem('user_id');
-            if (!partyId || !userId) {
-                alert('请先登录并加入 Party！');
-                return;
-            }
-            const response = await fetch('/order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ party_id: parseInt(partyId), user_id: parseInt(userId), menu_id: menuId })
-            });
-            const result = await response.json();
-            alert(result.message);
-            if (result.message === '订单提交成功') {
-                loadMenus(); // 刷新菜谱列表
+            try {
+                const response = await fetch('/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ party_id: parseInt(partyId), user_id: parseInt(userId), menu_id: menuId })
+                });
+                const result = await response.json();
+                alert(result.message || result.error);
+                if (result.message === '订单提交成功') {
+                    loadMenus();
+                }
+            } catch (error) {
+                alert('网络错误，请稍后重试！');
             }
         }
-
-        window.onload = loadMenus;
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen font-sans">
