@@ -22,6 +22,8 @@
         window.onload = function() {
             const userId = localStorage.getItem('user_id');
             const role = localStorage.getItem('role');
+            console.log(userId);
+            console.log(role);
             if (!userId) {
                 alert('请先登录！');
                 location.href = '/login';

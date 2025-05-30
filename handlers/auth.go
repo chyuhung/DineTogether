@@ -6,6 +6,7 @@ import (
     "github.com/gin-contrib/sessions"
     "github.com/gin-gonic/gin"
     "golang.org/x/crypto/bcrypt"
+    "log"
     "net/http"
 )
 
@@ -26,6 +27,7 @@ func Register(db *sql.DB) gin.HandlerFunc {
         }
         hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
         if err != nil {
+            log.Printf("密码加密失败: %v", err)
             c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
             return
         }
@@ -35,6 +37,7 @@ func Register(db *sql.DB) gin.HandlerFunc {
             if err.Error() == "UNIQUE constraint failed: users.username" {
                 c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
             } else {
+                log.Printf("注册失败: %v", err)
                 c.JSON(http.StatusInternalServerError, gin.H{"error": "注册失败"})
             }
             return
@@ -64,13 +67,15 @@ func Login(db *sql.DB) gin.HandlerFunc {
             return
         }
         session := sessions.Default(c)
-        session.Clear() // 清除旧 session
+        session.Clear()
         session.Set("user_id", user.ID)
         session.Set("role", user.Role)
         if err := session.Save(); err != nil {
+            log.Printf("保存 session 失败: %v", err)
             c.JSON(http.StatusInternalServerError, gin.H{"error": "保存 session 失败"})
             return
         }
+        log.Printf("用户 %s 登录成功，role: %s", user.Username, user.Role)
         c.JSON(http.StatusOK, gin.H{"message": "登录成功", "user_id": user.ID, "role": user.Role})
     }
 }
@@ -79,11 +84,31 @@ func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
         session := sessions.Default(c)
         role := session.Get("role")
-        if role != nil {
+        if role != "admin" {
+            log.Printf("权限验证失败，当前 role: %v", role)
             c.JSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
             c.Abort()
             return
         }
         c.Next()
+    }
+}
+
+func GetUserInfo(db *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        session := sessions.Default(c)
+        userID := session.Get("user_id")
+        if userID == nil {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+            return
+        }
+        var user models.User
+        row := db.QueryRow("SELECT id, username, role FROM users WHERE id = ?", userID)
+        if err := row.Scan(&user.ID, &user.Username, &user.Role); err != nil {
+            log.Printf("获取用户信息失败: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败"})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"user_id": user.ID, "username": user.Username, "role": user.Role})
     }
 }

@@ -20,7 +20,7 @@
     </style>
     <script>
         async function login(event) {
-            event.preventDefault(); // 阻止表单默认提交
+            event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             if (!username || !password) {
@@ -36,8 +36,6 @@
                 });
                 const result = await response.json();
                 if (result.message === '登录成功') {
-                    localStorage.setItem('user_id', result.user_id);
-                    localStorage.setItem('role', result.role);
                     location.href = '/dashboard';
                 } else {
                     alert(result.error || '登录失败，请重试！');

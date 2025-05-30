@@ -27,7 +27,7 @@ func main() {
         Path:     "/",
         MaxAge:   86400,
         HttpOnly: true,
-        SameSite: http.SameSiteLaxMode,
+        SameSite: http.SameSiteStrictMode, // 增强 CSRF 保护
     })
     r.Use(sessions.Sessions("session", store))
 
@@ -47,13 +47,7 @@ func main() {
     r.GET("/", func(c *gin.Context) {
         c.HTML(http.StatusOK, "index.html", nil)
     })
-    r.GET("/dashboard", func(c *gin.Context) {
-        session := sessions.Default(c)
-        if session.Get("user_id") == nil {
-            c.Redirect(http.StatusFound, "/login")
-            c.Abort()
-            return
-        }
+    r.GET("/dashboard", loginRequired, func(c *gin.Context) {
         c.HTML(http.StatusOK, "dashboard.html", nil)
     })
     r.GET("/login", func(c *gin.Context) {
@@ -68,6 +62,7 @@ func main() {
         }
         c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
     })
+    r.GET("/api/user", loginRequired, handlers.GetUserInfo(db))
     r.GET("/api/check-party", loginRequired, handlers.CheckParty(db))
     r.POST("/leave-party", loginRequired, handlers.LeaveParty(db))
     r.GET("/register", func(c *gin.Context) {
