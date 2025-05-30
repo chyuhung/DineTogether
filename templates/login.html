@@ -19,21 +19,14 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            if (userId) {
-                location.href = '/';
-            }
-        }
-
-        async function login() {
+        async function login(event) {
+            event.preventDefault(); // 阻止表单默认提交
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             if (!username || !password) {
                 alert('请填写用户名和密码！');
                 return;
             }
-
             try {
                 const response = await fetch('/login', {
                     method: 'POST',
@@ -45,27 +38,28 @@
                 if (result.message === '登录成功') {
                     localStorage.setItem('user_id', result.user_id);
                     localStorage.setItem('role', result.role);
-                    location.href = '/';
+                    location.href = '/dashboard';
                 } else {
                     alert(result.error || '登录失败，请重试！');
                 }
             } catch (error) {
+                console.error('登录错误:', error);
                 alert('网络错误，请稍后重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6">
+        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">登录 DineTogether</h1>
-            <form id="form" class="flex flex-col space-y-4">
+            <form id="form" class="flex flex-col space-y-4" onsubmit="login(event)">
                 <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <button type="button" onclick="login()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
                     登录
                 </button>
-                <p class="text-center text-gray-500">没有账号？<a href="/register" class="text-blue-600">注册</a></p>
+                <p class="text-center text-gray-500">没有账号？<a href="/register" class="text-blue-600 hover:underline">注册</a></p>
             </form>
         </div>
     </div>

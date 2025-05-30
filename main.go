@@ -29,15 +29,14 @@ func main() {
         HttpOnly: true,
         SameSite: http.SameSiteLaxMode,
     })
-    r.Use(sessions.Sessions("dine_session", store))
+    r.Use(sessions.Sessions("session", store))
 
     r.Static("/static", "./static")
     r.LoadHTMLGlob("templates/*")
 
     loginRequired := func(c *gin.Context) {
         session := sessions.Default(c)
-        userID := session.Get("user_id")
-        if userID == nil {
+        if session.Get("user_id") == nil {
             c.Redirect(http.StatusFound, "/login")
             c.Abort()
             return
@@ -46,21 +45,18 @@ func main() {
     }
 
     r.GET("/", func(c *gin.Context) {
+        c.HTML(http.StatusOK, "index.html", nil)
+    })
+    r.GET("/dashboard", func(c *gin.Context) {
         session := sessions.Default(c)
         if session.Get("user_id") == nil {
             c.Redirect(http.StatusFound, "/login")
             c.Abort()
             return
         }
-        c.HTML(http.StatusOK, "index.html", nil)
+        c.HTML(http.StatusOK, "dashboard.html", nil)
     })
     r.GET("/login", func(c *gin.Context) {
-        session := sessions.Default(c)
-        if session.Get("user_id") != nil {
-            c.Redirect(http.StatusFound, "/")
-            c.Abort()
-            return
-        }
         c.HTML(http.StatusOK, "login.html", nil)
     })
     r.GET("/logout", loginRequired, func(c *gin.Context) {
@@ -70,8 +66,9 @@ func main() {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "退出失败"})
             return
         }
-        c.Redirect(http.StatusFound, "/login")
+        c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
     })
+    r.GET("/api/check-party", loginRequired, handlers.CheckParty(db))
     r.POST("/leave-party", loginRequired, handlers.LeaveParty(db))
     r.GET("/register", func(c *gin.Context) {
         c.HTML(http.StatusOK, "register.html", nil)
@@ -107,6 +104,12 @@ func main() {
         c.HTML(http.StatusOK, "join_party.html", nil)
     })
     r.GET("/order", loginRequired, func(c *gin.Context) {
+        session := sessions.Default(c)
+        if session.Get("party_id") == nil {
+            c.Redirect(http.StatusFound, "/dashboard")
+            c.Abort()
+            return
+        }
         c.HTML(http.StatusOK, "order.html", nil)
     })
     r.POST("/register", handlers.Register(db))

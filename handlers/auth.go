@@ -64,6 +64,7 @@ func Login(db *sql.DB) gin.HandlerFunc {
             return
         }
         session := sessions.Default(c)
+        session.Clear() // 清除旧 session
         session.Set("user_id", user.ID)
         session.Set("role", user.Role)
         if err := session.Save(); err != nil {
@@ -78,7 +79,7 @@ func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
         session := sessions.Default(c)
         role := session.Get("role")
-        if role != "admin" {
+        if role != nil {
             c.JSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
             c.Abort()
             return

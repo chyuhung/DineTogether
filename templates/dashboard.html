@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DineTogether - 仪表盘</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .btn-hover:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s ease-in-out;
+        }
+    </style>
+    <script>
+        window.onload = async function() {
+            const container = document.getElementById('action-container');
+            const userId = localStorage.getItem('user_id');
+            const role = localStorage.getItem('role');
+            if (!userId) {
+                console.warn('未找到 user_id，跳转到登录页面');
+                location.href = '/login';
+                return;
+            }
+
+            if (role === 'admin') {
+                container.innerHTML = `
+                    <button onclick="location.href='/menu-manage'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        菜谱管理
+                    </button>
+                    <button onclick="location.href='/party-manage'" class="bg-blue-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        Party 管理
+                    </button>
+                    <button onclick="location.href='/user-manage'" class="bg-purple-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        人员管理
+                    </button>
+                    <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                        退出登录
+                    </button>
+                `;
+            } else {
+                try {
+                    const response = await fetch('/api/check-party', {
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (result.hasParty) {
+                        container.innerHTML = `
+                            <button onclick="location.href='/order'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                                开始点餐
+                            </button>
+                            <button onclick="leaveParty()" class="bg-red-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                                离开 Party
+                            </button>
+                            <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                                退出登录
+                            </button>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <button onclick="location.href='/join-party'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                                加入 Party
+                            </button>
+                            <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                                退出登录
+                            </button>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('加载 Party 状态失败:', error);
+                    container.innerHTML = '<p class="text-red-600 text-center">加载失败，请刷新</p>';
+                }
+            }
+        }
+
+        async function logout() {
+            if (!confirm('确定要退出登录吗？')) return;
+            try {
+                const response = await fetch('/logout', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.message === '退出成功') {
+                    localStorage.clear();
+                    location.href = '/';
+                } else {
+                    alert('退出失败，请重试！');
+                }
+            } catch (error) {
+                console.error('退出错误:', error);
+                alert('网络错误，请重试！');
+            }
+        }
+
+        async function leaveParty() {
+            if (!confirm('确定要离开 Party 吗？')) return;
+            try {
+                const response = await fetch('/leave-party', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.message === '已离开 Party') {
+                    location.href = '/dashboard';
+                } else {
+                    alert(result.error || '离开 Party 失败，请重试！');
+                }
+            } catch (error) {
+                console.error('离开 Party 错误:', error);
+                alert('网络错误，请重试！');
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
+    <div class="container mx-auto p-4 max-w-md">
+        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 仪表盘</h1>
+            <p class="text-center text-gray-600 mb-6">选择你的下一步！</p>
+            <div id="action-container" class="flex flex-col space-y-4"></div>
+        </div>
+    </div>
+</body>
+</html>
