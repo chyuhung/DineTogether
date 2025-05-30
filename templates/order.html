@@ -19,6 +19,8 @@
         }
     </style>
     <script>
+        let currentUser = null;
+
         window.onload = async function() {
             const menuContainer = document.getElementById('menu-container');
             const ordersContainer = document.getElementById('orders-container');
@@ -31,6 +33,7 @@
                     location.href = '/login';
                     return;
                 }
+                currentUser = userResult.username;
                 const partyResponse = await fetch('/api/party', { credentials: 'include' });
                 const partyResult = await partyResponse.json();
                 if (!partyResult.hasParty) {
@@ -61,6 +64,7 @@
                             <tr class="bg-gray-200">
                                 <th class="p-2">用户</th>
                                 <th class="p-2">菜品</th>
+                                <th class="p-2">操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -68,6 +72,13 @@
                                 <tr class="border-b">
                                     <td class="p-2">${order.username}</td>
                                     <td class="p-2">${order.menu_name}</td>
+                                    <td class="p-2">
+                                        ${order.username === currentUser ? `
+                                            <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded-lg btn-hover">
+                                                删除
+                                            </button>
+                                        ` : '-'}
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -96,6 +107,26 @@
                 }
             } catch (error) {
                 console.error('点餐错误:', error);
+                alert('网络错误，请重试！');
+            }
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm('确定要删除此订单吗？')) return;
+            try {
+                const response = await fetch(`/order/${orderId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.message === '订单删除成功') {
+                    alert('删除成功！');
+                    location.reload();
+                } else {
+                    alert(result.error || '删除失败，请重试！');
+                }
+            } catch (error) {
+                console.error('删除订单错误:', error);
                 alert('网络错误，请重试！');
             }
         }

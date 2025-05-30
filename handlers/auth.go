@@ -93,22 +93,3 @@ func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
         c.Next()
     }
 }
-
-func GetUserInfo(db *sql.DB) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        session := sessions.Default(c)
-        userID := session.Get("user_id")
-        if userID == nil {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
-            return
-        }
-        var user models.User
-        row := db.QueryRow("SELECT id, username, role FROM users WHERE id = ?", userID)
-        if err := row.Scan(&user.ID, &user.Username, &user.Role); err != nil {
-            log.Printf("获取用户信息失败: %v", err)
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败"})
-            return
-        }
-        c.JSON(http.StatusOK, gin.H{"user_id": user.ID, "username": user.Username, "role": user.Role})
-    }
-}

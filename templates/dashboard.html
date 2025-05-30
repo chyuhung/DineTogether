@@ -10,8 +10,8 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .fade-in- {
-            animation: fadeIn-0.5s ease-out;
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
         .btn-hover:hover {
             transform: scale(1.05);
@@ -55,6 +55,9 @@
                         <button onclick="location.href='/user-manage'" class="bg-purple-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
                             用户管理
                         </button>
+                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            修改密码
+                        </button>
                         <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
                             退出登录
                         </button>
@@ -73,6 +76,9 @@
                             <button onclick="leaveParty()" class="bg-red-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
                                 离开 Party
                             </button>
+                            <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                                修改密码
+                            </button>
                             <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
                                 退出登录
                             </button>
@@ -81,6 +87,9 @@
                         container.innerHTML = `
                             <button onclick="location.href='/join-party'" class="bg-green-500 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
                                 加入 Party
+                            </button>
+                            <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                                修改密码
                             </button>
                             <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
                                 退出登录

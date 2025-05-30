@@ -102,6 +102,9 @@ func main() {
     r.GET("/join-party", loginRequired, func(c *gin.Context) {
         c.HTML(http.StatusOK, "join_party.html", nil)
     })
+    r.GET("/change-password", loginRequired, func(c *gin.Context) {
+        c.HTML(http.StatusOK, "change_password.html", nil)
+    })
     r.GET("/order", loginRequired, func(c *gin.Context) {
         session := sessions.Default(c)
         userID := session.Get("user_id")
@@ -117,9 +120,10 @@ func main() {
     })
     r.POST("/register", handlers.Register(db))
     r.POST("/login", handlers.Login(db))
+    r.POST("/change-password", loginRequired, handlers.ChangePassword(db))
     r.POST("/menus", loginRequired, handlers.AuthMiddleware(db), handlers.CreateMenu(db))
     r.GET("/menus", handlers.GetMenus(db))
-    r.GET("/menu/:id", loginRequired, handlers.GetMenuByID(db))
+    r.GET("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.GetMenuByID(db))
     r.PUT("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.UpdateMenu(db))
     r.DELETE("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteMenu(db))
     r.POST("/parties", loginRequired, handlers.AuthMiddleware(db), handlers.CreateParty(db))
@@ -134,6 +138,7 @@ func main() {
     r.DELETE("/user/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteUser(db))
     r.POST("/join-party", loginRequired, handlers.JoinParty(db))
     r.POST("/order", loginRequired, handlers.PlaceOrder(db))
+    r.DELETE("/order/:id", loginRequired, handlers.DeleteOrder(db))
 
     if err := r.Run(":8080"); err != nil {
         log.Fatal("Failed to start server:", err)
@@ -162,7 +167,7 @@ func initDatabase(db *sql.DB) {
             is_active BOOLEAN NOT NULL
         );
         CREATE TABLE IF NOT EXISTS orders (
-            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             party_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             menu_id INTEGER NOT NULL,
