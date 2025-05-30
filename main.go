@@ -65,7 +65,9 @@ func main() {
         c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
     })
     r.GET("/api/user", loginRequired, handlers.GetUserInfo(db))
+    r.GET("/api/party", loginRequired, handlers.GetCurrentParty(db))
     r.GET("/api/check-party", loginRequired, handlers.CheckParty(db))
+    r.GET("/api/party-orders", loginRequired, handlers.GetPartyOrders(db))
     r.POST("/leave-party", loginRequired, handlers.LeaveParty(db))
     r.GET("/register", func(c *gin.Context) {
         c.HTML(http.StatusOK, "register.html", nil)
@@ -117,7 +119,7 @@ func main() {
     r.POST("/login", handlers.Login(db))
     r.POST("/menus", loginRequired, handlers.AuthMiddleware(db), handlers.CreateMenu(db))
     r.GET("/menus", handlers.GetMenus(db))
-    r.GET("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.GetMenuByID(db))
+    r.GET("/menu/:id", loginRequired, handlers.GetMenuByID(db))
     r.PUT("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.UpdateMenu(db))
     r.DELETE("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteMenu(db))
     r.POST("/parties", loginRequired, handlers.AuthMiddleware(db), handlers.CreateParty(db))
@@ -160,7 +162,7 @@ func initDatabase(db *sql.DB) {
             is_active BOOLEAN NOT NULL
         );
         CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
             party_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             menu_id INTEGER NOT NULL,

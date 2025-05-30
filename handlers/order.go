@@ -2,69 +2,61 @@ package handlers
 
 import (
     "database/sql"
-    "DineTogether/models"
+    "github.com/gin-contrib/sessions"
     "github.com/gin-gonic/gin"
+    "log"
     "net/http"
 )
 
 func PlaceOrder(db *sql.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
-        var order models.Order
+        session := sessions.Default(c)
+        userID := session.Get("user_id")
+        partyID := session.Get("party_id")
+        if partyID == nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "未加入任何 Party"})
+            return
+        }
+        var order struct {
+            MenuID int `json:"menu_id"`
+        }
         if err := c.ShouldBindJSON(&order); err != nil {
             c.JSON(http.StatusBadRequest, gin.H{"error": "无效的输入"})
             return
         }
-
-        // 检查 Party 是否活跃
-        var party models.Party
-        row := db.QueryRow("SELECT energy_left, is_active FROM parties WHERE id = ?", order.PartyID)
-        if err := row.Scan(&party.EnergyLeft, &party.IsActive); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "Party 不存在"})
-            return
-        }
-        if !party.IsActive {
-            c.JSON(http.StatusForbidden, gin.H{"error": "Party 已关闭"})
-            return
-        }
-
-        // 获取菜品精力值
         var energyCost int
-        row = db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", order.MenuID)
+        row := db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", order.MenuID)
         if err := row.Scan(&energyCost); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "菜品不存在"})
+            log.Printf("菜品不存在: %v", err)
+            c.JSON(http.StatusNotFound, gin.H{"error": "菜品不存在"})
             return
         }
-
-        // 检查精力值是否足够
-        if party.EnergyLeft < energyCost {
-            c.JSON(http.StatusForbidden, gin.H{"error": "精力值不足"})
+        var energyLeft int
+        row = db.QueryRow("SELECT energy_left FROM parties WHERE id = ?", partyID)
+        if err := row.Scan(&energyLeft); err != nil {
+            log.Printf("Party 不存在: %v", err)
+            c.JSON(http.StatusNotFound, gin.H{"error": "Party 不存在"})
             return
         }
-
-        // 扣除精力值
-        _, err := db.Exec("UPDATE parties SET energy_left = energy_left - ? WHERE id = ?", energyCost, order.PartyID)
+        if energyLeft < energyCost {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Party 精力不足"})
+            return
+        }
+        _, err := db.Exec("INSERT INTO orders (party_id, user_id, menu_id) VALUES (?, ?, ?)",
+            partyID, userID, order.MenuID)
         if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "更新精力值失败"})
+            log.Printf("点餐失败: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "点餐失败"})
             return
         }
-
-        // 插入订单
-        _, err = db.Exec("INSERT INTO orders (party_id, user_id, menu_id) VALUES (?, ?, ?)",
-            order.PartyID, order.UserID, order.MenuID)
+        _, err = db.Exec("UPDATE parties SET energy_left = energy_left - ? WHERE id = ?",
+            energyCost, partyID)
         if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "订单创建失败"})
+            log.Printf("更新 Party 精力失败: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "更新 Party 精力失败"})
             return
         }
-
-        // 检查精力值是否耗尽
-        if party.EnergyLeft-energyCost <= 0 {
-            _, err = db.Exec("UPDATE parties SET is_active = false WHERE id = ?", order.PartyID)
-            if err != nil {
-                c.JSON(http.StatusInternalServerError, gin.H{"error": "关闭 Party 失败"})
-                return
-            }
-        }
-
-        c.JSON(http.StatusOK, gin.H{"message": "订单提交成功"})
+        log.Printf("用户 %v 在 Party %v 点餐 %v 成功", userID, partyID, order.MenuID)
+        c.JSON(http.StatusOK, gin.H{"message": "点餐成功"})
     }
 }

@@ -189,14 +189,14 @@ func JoinParty(db *sql.DB) gin.HandlerFunc {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "保存 session 失败"})
             return
         }
-        // 可选：记录用户加入 Party
+        // 记录用户加入 Party
         _, err := db.Exec("INSERT OR IGNORE INTO orders (party_id, user_id, menu_id) VALUES (?, ?, 0)",
             party.ID, joinRequest.UserID)
         if err != nil {
             log.Printf("记录用户加入 Party 失败: %v", err)
         }
-        log.Printf("用户 %d 加入 Party %d 成功", joinRequest.UserID, party.ID)
-        c.JSON(http.StatusOK, gin.H{"message": "加入 Party 成功", "party_id": party.ID})
+        log.Printf("用户 %d 加入 Party %d (%s) 成功", joinRequest.UserID, party.ID, party.Name)
+        c.JSON(http.StatusOK, gin.H{"message": "加入 Party 成功", "party_id": party.ID, "party_name": party.Name})
     }
 }
 
@@ -226,17 +226,21 @@ func LeaveParty(db *sql.DB) gin.HandlerFunc {
     }
 }
 
-func CheckParty(db *sql.DB) gin.HandlerFunc {
+func GetCurrentParty(db *sql.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
         session := sessions.Default(c)
         partyID := session.Get("party_id")
-        userID := session.Get("user_id")
-        if partyID != nil {
-            log.Printf("用户 %v 已加入 Party %v", userID, partyID)
-            c.JSON(http.StatusOK, gin.H{"hasParty": true})
+        if partyID == nil {
+            c.JSON(http.StatusOK, gin.H{"hasParty": false})
             return
         }
-        log.Printf("用户 %v 未加入任何 Party", userID)
-        c.JSON(http.StatusOK, gin.H{"hasParty": false})
+        var party models.Party
+        row := db.QueryRow("SELECT id, name, energy_left, is_active FROM parties WHERE id = ?", partyID)
+        if err := row.Scan(&party.ID, &party.Name, &party.EnergyLeft, &party.IsActive); err != nil {
+            log.Printf("获取 Party 信息失败: %v", err)
+            c.JSON(http.StatusOK, gin.H{"hasParty": false})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"hasParty": true, "party_id": party.ID, "party_name": party.Name})
     }
 }
