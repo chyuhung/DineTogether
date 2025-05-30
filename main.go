@@ -27,7 +27,7 @@ func main() {
         Path:     "/",
         MaxAge:   86400,
         HttpOnly: true,
-        SameSite: http.SameSiteStrictMode, // 增强 CSRF 保护
+        SameSite: http.SameSiteStrictMode,
     })
     r.Use(sessions.Sessions("session", store))
 
@@ -37,6 +37,7 @@ func main() {
     loginRequired := func(c *gin.Context) {
         session := sessions.Default(c)
         if session.Get("user_id") == nil {
+            log.Printf("未登录用户尝试访问 %s", c.Request.URL.Path)
             c.Redirect(http.StatusFound, "/login")
             c.Abort()
             return
@@ -57,6 +58,7 @@ func main() {
         session := sessions.Default(c)
         session.Clear()
         if err := session.Save(); err != nil {
+            log.Printf("退出失败: %v", err)
             c.JSON(http.StatusInternalServerError, gin.H{"error": "退出失败"})
             return
         }
@@ -100,11 +102,15 @@ func main() {
     })
     r.GET("/order", loginRequired, func(c *gin.Context) {
         session := sessions.Default(c)
-        if session.Get("party_id") == nil {
+        userID := session.Get("user_id")
+        partyID := session.Get("party_id")
+        if partyID == nil {
+            log.Printf("用户 %v 未加入 Party，跳转到 /dashboard", userID)
             c.Redirect(http.StatusFound, "/dashboard")
             c.Abort()
             return
         }
+        log.Printf("用户 %v 进入点餐页面，Party %v", userID, partyID)
         c.HTML(http.StatusOK, "order.html", nil)
     })
     r.POST("/register", handlers.Register(db))

@@ -53,6 +53,7 @@
                         credentials: 'include'
                     });
                     const partyResult = await partyResponse.json();
+                    console.log('Party 状态:', partyResult);
                     if (partyResult.hasParty) {
                         container.innerHTML = `
                             <button onclick="location.href='/order'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">

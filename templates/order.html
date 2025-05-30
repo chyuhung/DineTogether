@@ -6,12 +6,12 @@
     <title>DineTogether - 点餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .card-fade-in {
-            animation: cardFadeIn 0.3s ease-out;
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
         .btn-hover:hover {
             transform: scale(1.05);
@@ -19,69 +19,44 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            const partyId = localStorage.getItem('party_id');
-            if (!userId) {
-                alert('请先登录！');
-                location.href = '/login';
-                return;
-            }
-            if (!partyId) {
-                alert('请先加入 Party！');
-                location.href = '/join-party';
-                return;
-            }
-            loadMenus();
-        }
-
-        async function loadMenus() {
+        window.onload = async function() {
             try {
-                const response = await fetch('/menus');
-                const menus = await response.json();
-                const menuList = document.getElementById('menu-list');
-                menuList.innerHTML = '';
-                menus.forEach((menu, index) => {
-                    menuList.innerHTML += `
-                        <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
-                            <h3 class="text-xl font-bold text-gray-800">${menu.name}</h3>
-                            <p class="text-gray-600">${menu.description}</p>
-                            <p class="text-sm text-purple-600">所需精力值: ${menu.energy_cost}</p>
-                            <button onclick="placeOrder(${menu.id})" class="mt-2 bg-blue-500 text-white p-2 rounded-lg font-semibold btn-hover">
-                                立即点餐
-                            </button>
-                        </div>
-                    `;
-                });
-            } catch (error) {
-                alert('加载菜谱失败，请稍后重试！');
-            }
-        }
-
-        async function placeOrder(menuId) {
-            const partyId = localStorage.getItem('party_id');
-            const userId = localStorage.getItem('user_id');
-            try {
-                const response = await fetch('/order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ party_id: parseInt(partyId), user_id: parseInt(userId), menu_id: menuId })
-                });
-                const result = await response.json();
-                alert(result.message || result.error);
-                if (result.message === '订单提交成功') {
-                    loadMenus();
+                const userResponse = await fetch('/api/user', { credentials: 'include' });
+                const userResult = await userResponse.json();
+                if (userResult.error) {
+                    console.warn('未登录:', userResult.error);
+                    location.href = '/login';
+                    return;
                 }
+                const partyResponse = await fetch('/api/check-party', { credentials: 'include' });
+                const partyResult = await partyResponse.json();
+                if (!partyResult.hasParty) {
+                    console.warn('未加入 Party');
+                    location.href = '/dashboard';
+                    return;
+                }
+                // TODO: 加载菜单列表
+                console.log('进入点餐页面，用户:', userResult, 'Party 状态:', partyResult);
             } catch (error) {
+                console.error('加载点餐页面失败:', error);
                 alert('网络错误，请稍后重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen font-sans">
-    <div class="container mx-auto p-4 max-w-2xl">
-        <h1 class="text-3xl font-bold text-center text-white mb-6">DineTogether 点餐</h1>
-        <div id="menu-list" class="flex flex-col space-y-4"></div>
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
+    <div class="container mx-auto p-4 max-w-md">
+        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 点餐</h1>
+            <p class="text-center text-gray-600 mb-6">选择你的美食！</p>
+            <div id="menu-container" class="flex flex-col space-y-4">
+                <!-- 菜单列表将动态加载 -->
+                <p class="text-center text-gray-500">正在加载菜单...</p>
+            </div>
+            <button onclick="location.href='/dashboard'" class="bg-blue-600 text-white p-3 rounded-lg font-semibold btn-hover w-full mt-4">
+                返回仪表盘
+            </button>
+        </div>
     </div>
 </body>
 </html>
