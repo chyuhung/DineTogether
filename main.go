@@ -23,6 +23,7 @@ func initConfig() {
 }
 
 func main() {
+	initConfig()
 	db, err := sql.Open("sqlite3", viper.GetString("database.path"))
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
@@ -32,7 +33,7 @@ func main() {
 	initDatabase(db)
 
 	r := gin.Default()
-	r.Use(middleware.ErrorHandler()) // 添加错误处理中间件
+	r.Use(middleware.ErrorHandler())
 
 	store := cookie.NewStore([]byte(viper.GetString("session.secret")))
 	store.Options(sessions.Options{

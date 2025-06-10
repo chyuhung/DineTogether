@@ -6,11 +6,27 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ValidatePassword 验证密码是否满足要求
+func ValidatePassword(password string) error {
+	if len(password) < 6 {
+		return errors.NewAppError(http.StatusBadRequest, "密码长度必须为6位")
+	}
+	// 检查是否包含数字
+	hasLetter, _ := regexp.MatchString("[a-zA-Z]", password)
+	hasNumber, _ := regexp.MatchString("[0-9]", password)
+	if !hasLetter || !hasNumber {
+		return errors.NewAppError(http.StatusBadRequest, "密码必须包含字母和数字")
+	}
+
+	return nil
+}
 
 func Register(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -28,7 +44,7 @@ func Register(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.ErrInternalServer)
 			return
 		}
-		_, err = db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", user.Username, hashedPassword, req.Role)
+		_, err = db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", user.Username, hashedPassword, user.Role)
 		if err != nil {
 			c.Error(errors.NewAppError(400, "用户名已存在"))
 			return
@@ -44,17 +60,17 @@ func Login(db *sql.DB) gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&loginRequest); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的输入"})
+			c.Error(errors.ErrBadRequest)
 			return
 		}
 		var user models.User
 		row := db.QueryRow("SELECT id, username, password, role FROM users WHERE username = ?", loginRequest.Username)
 		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Role); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+			c.Error(errors.ErrUnauthorized)
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+			c.Error(errors.ErrUnauthorized)
 			return
 		}
 		session := sessions.Default(c)
@@ -63,7 +79,7 @@ func Login(db *sql.DB) gin.HandlerFunc {
 		session.Set("role", user.Role)
 		if err := session.Save(); err != nil {
 			log.Printf("保存 session 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "保存 session 失败"})
+			c.Error(errors.ErrInternalServer)
 			return
 		}
 		log.Printf("用户 %s 登录成功，role: %s", user.Username, user.Role)
@@ -77,7 +93,7 @@ func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
 		role := session.Get("role")
 		if role != "admin" {
 			log.Printf("权限验证失败，当前 role: %v", role)
-			c.JSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
+			c.Error(errors.NewAppError(403, "需要管理员权限"))
 			c.Abort()
 			return
 		}
