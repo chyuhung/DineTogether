@@ -20,16 +20,8 @@
     </style>
     <script>
         window.onload = async function() {
-            const menuContainer = document.getElementById('menu-container');
-            try {
-                // 检查用户状态
-                const userResponse = await fetch('/api/user', { credentials: 'include' });
-                const userResult = await userResponse.json();
-                if (userResult.error || userResult.role !== 'admin') {
-                    console.warn('未登录或无权限:', userResult.error);
-                    location.href = '/login';
-                    return;
-                }
+            const user = await checkAuth('/login', 'admin');
+                    if (!user) return;
 
                 // 加载菜单
                 const menusResponse = await fetch('/menus', { credentials: 'include' });
@@ -63,10 +55,6 @@
                         </tbody>
                     </table>
                 ` : '<p class="text-center text-gray-500">暂无菜品</p>';
-            } catch (error) {
-                console.error('加载菜单失败:', error);
-                menuContainer.innerHTML = '<p class="text-red-600 text-center">加载失败，请刷新</p>';
-            }
         }
 
         async function deleteMenu(menuId) {

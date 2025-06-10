@@ -1,0 +1,6 @@
+database:
+  path: "./db/dine_together.db"
+session:
+  secret: "your-session-secret"
+csrf:
+  secret: "your-csrf-secret"
