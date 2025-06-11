@@ -29,12 +29,14 @@ async function checkAuth(redirectTo, requiredRole = null) {
     return { userId, role };
 }
 
-// 显示错误消息
-function showError(elementId, message) {
+// 显示消息（成功或错误）
+function showMessage(elementId, message, isError = true) {
     const errorDiv = document.getElementById(elementId);
     if (errorDiv) {
         errorDiv.textContent = message;
         errorDiv.classList.remove('hidden');
+        errorDiv.classList.toggle('text-red-600', isError);
+        errorDiv.classList.toggle('text-green-600', !isError);
     } else {
         alert(message);
     }

@@ -39,10 +39,10 @@
                         `;
                     });
                 } else {
-                    showError('error-message', result.error || '加载用户列表失败！');
+                    showMessage('error-message', result.error || '加载用户列表失败！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -51,13 +51,13 @@
             try {
                 const result = await makeRequest(`/user/${userId}`, 'DELETE');
                 if (result.message === '用户删除成功') {
-                    alert('用户删除成功！');
-                    location.reload();
+                    showMessage('error-message', '用户删除成功！', false);
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    showError('error-message', result.error || '删除用户失败，请重试！');
+                    showMessage('error-message', result.error || '删除用户失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -66,7 +66,7 @@
     <div class="container mx-auto p-4 max-w-4xl">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">用户管理</h1>
-            <div id="error-message" class="text-red-600 text-center hidden mb-4"></div>
+            <div id="error-message" class="text-center hidden mb-4"></div>
             <button onclick="location.href='/create-user'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-4 btn-hover w-full">新建用户</button>
             <table id="user-table" class="min-w-full bg-white border">
                 <thead>

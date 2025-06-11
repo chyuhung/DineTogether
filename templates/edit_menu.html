@@ -25,7 +25,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const menuId = urlParams.get('id');
             if (!menuId) {
-                showError('error-message', '无效的菜品 ID！');
+                showMessage('error-message', '无效的菜品 ID！');
                 return;
             }
             try {
@@ -35,10 +35,10 @@
                     document.getElementById('description').value = result.menu.description || '';
                     document.getElementById('energy_cost').value = result.menu.energy_cost;
                 } else {
-                    showError('error-message', result.error || '加载菜品失败！');
+                    showMessage('error-message', result.error || '加载菜品失败！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -50,19 +50,19 @@
             const description = document.getElementById('description').value;
             const energyCost = parseInt(document.getElementById('energy_cost').value);
             if (!name || !energyCost) {
-                showError('error-message', '请填写菜品名称和精力消耗！');
+                showMessage('error-message', '请填写菜品名称和精力消耗！');
                 return;
             }
             try {
                 const result = await makeRequest(`/menu/${menuId}`, 'PUT', { name, description, energy_cost: energyCost });
                 if (result.message === '菜品更新成功') {
-                    alert('菜品更新成功！');
-                    location.href = '/menu-manage';
+                    showMessage('error-message', '菜品更新成功！', false);
+                    setTimeout(() => location.href = '/menu-manage', 1000);
                 } else {
-                    showError('error-message', result.error || '更新菜品失败，请重试！');
+                    showMessage('error-message', result.error || '更新菜品失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -75,7 +75,7 @@
                 <input id="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <textarea id="description" placeholder="描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
                 <input id="energy_cost" type="number" placeholder="精力消耗" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <div id="error-message" class="text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
                 <button type="button" onclick="location.href='/menu-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回菜单管理</button>
             </form>

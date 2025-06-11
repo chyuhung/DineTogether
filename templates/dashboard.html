@@ -78,7 +78,7 @@
                     `;
                 }
             } catch (error) {
-                showError('error-message', '加载失败，请刷新页面！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -89,12 +89,13 @@
                 if (result.message === '退出成功') {
                     localStorage.removeItem('user_id');
                     localStorage.removeItem('role');
-                    location.href = '/login';
+                    showMessage('error-message', '退出登录成功！', false);
+                    setTimeout(() => location.href = '/login', 1000);
                 } else {
-                    showError('error-message', result.error || '退出失败，请重试！');
+                    showMessage('error-message', result.error || '退出登录失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -103,13 +104,13 @@
             try {
                 const result = await makeRequest('/leave-party', 'POST');
                 if (result.message === '离开 Party 成功') {
-                    alert('离开 Party 成功！');
-                    location.reload();
+                    showMessage('error-message', '离开 Party 成功！', false);
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    showError('error-message', result.error || '离开 Party 失败，请重试！');
+                    showMessage('error-message', result.error || '离开 Party 失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -118,7 +119,7 @@
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 id="title" class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 仪表盘</h1>
-            <div id="error-message" class="text-red-600 text-center hidden mb-4"></div>
+            <div id="error-message" class="text-center hidden mb-4"></div>
             <div id="action-container" class="flex flex-col space-y-2"></div>
         </div>
     </div>

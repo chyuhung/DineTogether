@@ -32,19 +32,19 @@
             const password = document.getElementById('password').value;
             const userId = document.getElementById('user_id').value;
             if (!partyName || !password || !userId) {
-                showError('error-message', '请填写 Party 名称和密码！');
+                showMessage('error-message', '请填写 Party 名称和密码！');
                 return;
             }
             try {
                 const result = await makeRequest('/join-party', 'POST', { party_name: partyName, password, user_id: parseInt(userId) });
                 if (result.message === '加入 Party 成功') {
-                    alert('加入 Party 成功！');
-                    location.href = '/dashboard';
+                    showMessage('error-message', '加入 Party 成功！', false);
+                    setTimeout(() => location.href = '/dashboard', 1000);
                 } else {
-                    showError('error-message', result.error || '加入 Party 失败，请重试！');
+                    showMessage('error-message', result.error || '加入 Party 失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -57,7 +57,7 @@
                 <input id="party_name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="user_id" type="hidden" value="">
-                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <div id="error-message" class="text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">加入 Party</button>
                 <button type="button" onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回仪表盘</button>
             </form>

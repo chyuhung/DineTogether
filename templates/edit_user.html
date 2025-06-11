@@ -25,7 +25,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const userId = urlParams.get('id');
             if (!userId) {
-                showError('error-message', '无效的用户 ID！');
+                showMessage('error-message', '无效的用户 ID！');
                 return;
             }
             try {
@@ -34,10 +34,10 @@
                     document.getElementById('username').value = result.username;
                     document.getElementById('role').value = result.role;
                 } else {
-                    showError('error-message', result.error || '加载用户失败！');
+                    showMessage('error-message', result.error || '加载用户失败！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -49,19 +49,19 @@
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
             if (!username || !role) {
-                showError('error-message', '请填写用户名和角色！');
+                showMessage('error-message', '请填写用户名和角色！');
                 return;
             }
             try {
                 const result = await makeRequest(`/user/${userId}`, 'PUT', { username, password, role });
                 if (result.message === '用户更新成功') {
-                    alert('用户更新成功！');
-                    location.href = '/user-manage';
+                    showMessage('error-message', '用户更新成功！', false);
+                    setTimeout(() => location.href = '/user-manage', 1000);
                 } else {
-                    showError('error-message', result.error || '更新用户失败，请重试！');
+                    showMessage('error-message', result.error || '更新用户失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -77,7 +77,7 @@
                     <option value="guest">普通用户</option>
                     <option value="admin">管理员</option>
                 </select>
-                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <div id="error-message" class="text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
                 <button type="button" onclick="location.href='/user-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回用户管理</button>
             </form>

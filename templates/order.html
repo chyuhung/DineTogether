@@ -34,7 +34,7 @@
                         select.appendChild(option);
                     });
                 } else {
-                    showError('error-message', menuResult.error || '加载菜品失败！');
+                    showMessage('error-message', menuResult.error || '加载菜品失败！');
                 }
 
                 const orderResult = await makeRequest('/api/party-orders');
@@ -52,10 +52,10 @@
                         `;
                     });
                 } else {
-                    showError('error-message', orderResult.error || '加载订单失败！');
+                    showMessage('error-message', orderResult.error || '加载订单失败！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -63,19 +63,19 @@
             event.preventDefault();
             const menuId = document.getElementById('menu_id').value;
             if (!menuId) {
-                showError('error-message', '请选择菜品！');
+                showMessage('error-message', '请选择菜品！');
                 return;
             }
             try {
                 const result = await makeRequest('/order', 'POST', { menu_id: parseInt(menuId) });
                 if (result.message === '点餐成功') {
-                    alert('点餐成功！');
-                    location.reload();
+                    showMessage('error-message', '点餐成功！', false);
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    showError('error-message', result.error || '点餐失败，请重试！');
+                    showMessage('error-message', result.error || '点餐失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
 
@@ -84,13 +84,13 @@
             try {
                 const result = await makeRequest(`/order/${orderId}`, 'DELETE');
                 if (result.message === '订单删除成功') {
-                    alert('订单删除成功！');
-                    location.reload();
+                    showMessage('error-message', '订单删除成功！', false);
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    showError('error-message', result.error || '删除订单失败，请重试！');
+                    showMessage('error-message', result.error || '删除订单失败，请重试！');
                 }
             } catch (error) {
-                showError('error-message', '网络错误，请重试！');
+                alert('网络错误，请重试！');
             }
         }
     </script>
@@ -99,7 +99,7 @@
     <div class="container mx-auto p-4 max-w-4xl">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">点餐</h1>
-            <div id="error-message" class="text-red-600 text-center hidden mb-4"></div>
+            <div id="error-message" class="text-center hidden mb-4"></div>
             <form id="form" class="flex flex-col space-y-4 mb-6" onsubmit="placeOrder(event)">
                 <select id="menu_id" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                     <option value="">选择菜品</option>

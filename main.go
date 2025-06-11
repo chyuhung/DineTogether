@@ -35,18 +35,7 @@ func main() {
 	store := cookie.NewStore([]byte(secret))
 	store.Options(sessions.Options{MaxAge: 86400, Path: "/"})
 	r.Use(sessions.Sessions("session", store))
-	r.Use(func(c *gin.Context) {
-		if c.Request.URL.Path != "/" && c.Request.URL.Path != "/login" && c.Request.URL.Path != "/register" {
-			session := sessions.Default(c)
-			userID := session.Get("user_id")
-			if userID == nil {
-				c.JSON(401, gin.H{"error": "请先登录"})
-				c.Abort()
-				return
-			}
-		}
-		c.Next()
-	})
+
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
 	})
@@ -125,37 +114,37 @@ func main() {
 	r.POST("/order", handlers.PlaceOrder(db))
 	r.GET("/api/party-orders", handlers.GetPartyOrders(db))
 	r.DELETE("/order/:id", handlers.DeleteOrder(db))
-	adminGroup := r.Group("/admin")
-	adminGroup.Use(handlers.AuthMiddleware(db))
-	{
-		adminGroup.GET("/menu-manage", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "menu_manage.html", nil)
-		})
-		adminGroup.GET("/create-menu", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "create_menu.html", nil)
-		})
-		adminGroup.GET("/edit-menu", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "edit_menu.html", nil)
-		})
-		adminGroup.GET("/party-manage", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "party_manage.html", nil)
-		})
-		adminGroup.GET("/create-party", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "create_party.html", nil)
-		})
-		adminGroup.GET("/edit-party", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "edit_party.html", nil)
-		})
-		adminGroup.GET("/user-manage", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "user_manage.html", nil)
-		})
-		adminGroup.GET("/create-user", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "create_user.html", nil)
-		})
-		adminGroup.GET("/edit-user", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "edit_user.html", nil)
-		})
-	}
+
+	// 管理员页面路由（移除 /admin 分组，使用 AuthMiddleware 控制权限）
+	r.GET("/menu-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "menu_manage.html", nil)
+	})
+	r.GET("/create-menu", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "create_menu.html", nil)
+	})
+	r.GET("/edit-menu", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "edit_menu.html", nil)
+	})
+	r.GET("/party-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "party_manage.html", nil)
+	})
+	r.GET("/create-party", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "create_party.html", nil)
+	})
+	r.GET("/edit-party", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "edit_party.html", nil)
+	})
+	r.GET("/user-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "user_manage.html", nil)
+	})
+	r.GET("/create-user", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "create_user.html", nil)
+	})
+	r.GET("/edit-user", handlers.AuthMiddleware(db), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "edit_user.html", nil)
+	})
+
+	// API 路由（保持不变）
 	r.GET("/menus", handlers.GetMenus(db))
 	r.POST("/menus", handlers.AuthMiddleware(db), handlers.CreateMenu(db))
 	r.GET("/menu/:id", handlers.AuthMiddleware(db), handlers.GetMenu(db))
@@ -171,6 +160,7 @@ func main() {
 	r.GET("/user/:id", handlers.AuthMiddleware(db), handlers.GetUserByID(db))
 	r.PUT("/user/:id", handlers.AuthMiddleware(db), handlers.UpdateUser(db))
 	r.DELETE("/user/:id", handlers.AuthMiddleware(db), handlers.DeleteUser(db))
+
 	port := viper.GetString("server.port")
 	if port == "" {
 		port = "8080"

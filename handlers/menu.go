@@ -117,7 +117,7 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// DeleteMenu 删除菜品
+// DeleteMenu 删除菜品并恢复相关 Party 精力
 func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
@@ -125,17 +125,83 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.ErrBadRequest)
 			return
 		}
-		result, err := db.Exec("DELETE FROM menus WHERE id = ?", id)
+		tx, err := db.Begin()
 		if err != nil {
-			log.Printf("删除菜品失败: %v", err)
+			log.Printf("开启事务失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		// 获取菜品的精力消耗
+		var energyCost int
+		row := tx.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", id)
+		if err := row.Scan(&energyCost); err != nil {
+			tx.Rollback()
+			if err == sql.ErrNoRows {
+				c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
+			} else {
+				log.Printf("查询菜品 %v 失败: %v", id, err)
+				c.Error(errors.ErrInternalServer)
+			}
+			return
+		}
+		// 查找所有引用该菜品的订单及其对应的 Party
+		rows, err := tx.Query("SELECT party_id FROM orders WHERE menu_id = ? AND menu_id != 0", id)
+		if err != nil {
+			tx.Rollback()
+			log.Printf("查询订单失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		defer rows.Close()
+		partyEnergyUpdates := make(map[int]int) // Party ID -> 总精力恢复量
+		for rows.Next() {
+			var partyID int
+			if err := rows.Scan(&partyID); err != nil {
+				tx.Rollback()
+				log.Printf("扫描订单失败: %v", err)
+				c.Error(errors.ErrInternalServer)
+				return
+			}
+			partyEnergyUpdates[partyID] += energyCost
+		}
+		// 更新每个 Party 的精力值
+		for partyID, energyToRestore := range partyEnergyUpdates {
+			_, err := tx.Exec("UPDATE parties SET energy_left = energy_left + ? WHERE id = ?", energyToRestore, partyID)
+			if err != nil {
+				tx.Rollback()
+				log.Printf("恢复 Party %v 精力失败: %v", partyID, err)
+				c.Error(errors.ErrInternalServer)
+				return
+			}
+		}
+		// 删除订单中的引用
+		_, err = tx.Exec("DELETE FROM orders WHERE menu_id = ?", id)
+		if err != nil {
+			tx.Rollback()
+			log.Printf("删除订单引用失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		// 删除菜品
+		result, err := tx.Exec("DELETE FROM menus WHERE id = ?", id)
+		if err != nil {
+			tx.Rollback()
+			log.Printf("删除菜品 %v 失败: %v", id, err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
+			tx.Rollback()
 			c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
 			return
 		}
+		if err := tx.Commit(); err != nil {
+			log.Printf("提交事务失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		log.Printf("菜品 %v 删除成功，已恢复相关 Party 精力", id)
 		c.JSON(http.StatusOK, gin.H{"message": "菜品删除成功"})
 	}
 }
