@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DineTogether - 登录</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -24,25 +25,20 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             if (!username || !password) {
-                alert('请填写用户名和密码！');
+                showError('error-message', '请填写用户名和密码！');
                 return;
             }
             try {
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest('/login', 'POST', { username, password });
                 if (result.message === '登录成功') {
+                    localStorage.setItem('user_id', result.user_id);
+                    localStorage.setItem('role', result.role);
                     location.href = '/dashboard';
                 } else {
-                    alert(result.error || '登录失败，请重试！');
+                    showError('error-message', result.error || '登录失败，请重试！');
                 }
             } catch (error) {
-                console.error('登录错误:', error);
-                alert('网络错误，请稍后重试！');
+                showError('error-message', '网络错误，请稍后重试！');
             }
         }
     </script>
@@ -54,9 +50,8 @@
             <form id="form" class="flex flex-col space-y-4" onsubmit="login(event)">
                 <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                    登录
-                </button>
+                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">登录</button>
                 <p class="text-center text-gray-500">没有账号？<a href="/register" class="text-blue-600 hover:underline">注册</a></p>
             </form>
         </div>

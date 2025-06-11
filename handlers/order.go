@@ -11,13 +11,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// PlaceOrder 提交订单
 func PlaceOrder(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(400, "未加入任何 Party"))
+			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
 			return
 		}
 		var order struct {
@@ -27,35 +28,50 @@ func PlaceOrder(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.ErrBadRequest)
 			return
 		}
+		if order.MenuID <= 0 {
+			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的菜品 ID"))
+			return
+		}
 		var energyCost int
 		row := db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", order.MenuID)
 		if err := row.Scan(&energyCost); err != nil {
-			log.Printf("菜品不存在: %v", err)
+			log.Printf("菜品 %v 不存在: %v", order.MenuID, err)
 			c.Error(errors.ErrNotFound)
 			return
 		}
 		var energyLeft int
 		row = db.QueryRow("SELECT energy_left FROM parties WHERE id = ?", partyID)
 		if err := row.Scan(&energyLeft); err != nil {
-			log.Printf("Party 不存在: %v", err)
+			log.Printf("Party %v 不存在: %v", partyID, err)
 			c.Error(errors.ErrNotFound)
 			return
 		}
 		if energyLeft < energyCost {
-			c.Error(errors.NewAppError(400, "Party 精力不足"))
+			c.Error(errors.NewAppError(http.StatusBadRequest, "Party 精力不足"))
 			return
 		}
-		_, err := db.Exec("INSERT INTO orders (party_id, user_id, menu_id) VALUES (?, ?, ?)",
-			partyID, userID, order.MenuID)
+		tx, err := db.Begin()
 		if err != nil {
+			log.Printf("开启事务失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		_, err = tx.Exec("INSERT INTO orders (party_id, user_id, menu_id) VALUES (?, ?, ?)", partyID, userID, order.MenuID)
+		if err != nil {
+			tx.Rollback()
 			log.Printf("点餐失败: %v", err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}
-		_, err = db.Exec("UPDATE parties SET energy_left = energy_left - ? WHERE id = ?",
-			energyCost, partyID)
+		_, err = tx.Exec("UPDATE parties SET energy_left = energy_left - ? WHERE id = ?", energyCost, partyID)
 		if err != nil {
-			log.Printf("更新 Party 精力失败: %v", err)
+			tx.Rollback()
+			log.Printf("更新 Party %v 精力失败: %v", partyID, err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			log.Printf("提交事务失败: %v", err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}
@@ -64,13 +80,14 @@ func PlaceOrder(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// DeleteOrder 删除订单
 func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(400, "未加入任何 Party"))
+			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
 			return
 		}
 		orderID, err := strconv.Atoi(c.Param("id"))
@@ -81,18 +98,18 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		var orderUserID, menuID int
 		row := db.QueryRow("SELECT user_id, menu_id FROM orders WHERE id = ? AND party_id = ?", orderID, partyID)
 		if err := row.Scan(&orderUserID, &menuID); err != nil {
-			log.Printf("订单不存在: %v", err)
+			log.Printf("订单 %v 不存在: %v", orderID, err)
 			c.Error(errors.ErrNotFound)
 			return
 		}
 		if orderUserID != userID {
-			c.Error(errors.NewAppError(403, "无权限删除他人订单"))
+			c.Error(errors.NewAppError(http.StatusForbidden, "无权限删除他人订单"))
 			return
 		}
 		var energyCost int
 		row = db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", menuID)
 		if err := row.Scan(&energyCost); err != nil {
-			log.Printf("菜品不存在: %v", err)
+			log.Printf("菜品 %v 不存在: %v", menuID, err)
 			c.Error(errors.ErrNotFound)
 			return
 		}
@@ -105,15 +122,14 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		_, err = tx.Exec("DELETE FROM orders WHERE id = ?", orderID)
 		if err != nil {
 			tx.Rollback()
-			log.Printf("删除订单失败: %v", err)
+			log.Printf("删除订单 %v 失败: %v", orderID, err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}
-		_, err = tx.Exec("UPDATE parties SET energy_left = energy_left + ? WHERE id = ?",
-			energyCost, partyID)
+		_, err = tx.Exec("UPDATE parties SET energy_left = energy_left + ? WHERE id = ?", energyCost, partyID)
 		if err != nil {
 			tx.Rollback()
-			log.Printf("恢复 Party 精力失败: %v", err)
+			log.Printf("恢复 Party %v 精力失败: %v", partyID, err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}

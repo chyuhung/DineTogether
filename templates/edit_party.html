@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DineTogether - 编辑 Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -19,86 +20,69 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            const role = localStorage.getItem('role');
-            if (!userId) {
-                alert('请先登录！');
-                location.href = '/login';
-            } else if (role !== 'admin') {
-                alert('需要管理员权限！');
-                location.href = '/';
-            } else {
-                loadParty();
-            }
-        }
-
-        async function loadParty() {
-            const partyId = location.pathname.split('/').pop();
-            try {
-                const response = await fetch(`/party/${partyId}`, { credentials: 'include' });
-                const party = await response.json();
-                if (party.error) {
-                    alert(party.error);
-                    location.href = '/party-manage';
-                    return;
-                }
-                document.getElementById('edit_id').value = party.id;
-                document.getElementById('edit_name').value = party.name;
-                document.getElementById('edit_energy_left').value = party.energy_left;
-                document.getElementById('edit_is_active').checked = party.is_active;
-            } catch (error) {
-                alert('加载 Party 详情失败，请稍后重试！');
-                location.href = '/party-manage';
-            }
-        }
-
-        async function updateParty() {
-            const id = document.getElementById('edit_id').value;
-            const name = document.getElementById('edit_name').value;
-            const password = document.getElementById('password').value;
-            const energyLeft = parseInt(document.getElementById('edit_energy_left').value);
-            const isActive = document.getElementById('edit_is_active').checked;
-            if (!name || !energyLeft || energyLeft <= 0) {
-                alert('请填写名称和能量值，且能量值需为正整数！');
+        window.onload = async function() {
+            if (!await checkAuth('/login', 'admin')) return;
+            const urlParams = new URLSearchParams(window.location.search);
+            const partyId = urlParams.get('id');
+            if (!partyId) {
+                showError('error-message', '无效的 Party ID！');
                 return;
             }
             try {
-                const response = await fetch(`/party/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, password, energy_left: energyLeft, is_active: isActive }),
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest(`/party/${partyId}`);
+                if (result.message === '获取 Party 成功') {
+                    document.getElementById('name').value = result.party.name;
+                    document.getElementById('energy_left').value = result.party.energy_left;
+                    document.getElementById('is_active').checked = result.party.is_active;
+                } else {
+                    showError('error-message', result.error || '加载 Party 失败！');
+                }
+            } catch (error) {
+                showError('error-message', '网络错误，请重试！');
+            }
+        }
+
+        async function updateParty(event) {
+            event.preventDefault();
+            const urlParams = new URLSearchParams(window.location.search);
+            const partyId = urlParams.get('id');
+            const name = document.getElementById('name').value;
+            const password = document.getElementById('password').value;
+            const energyLeft = parseInt(document.getElementById('energy_left').value);
+            const isActive = document.getElementById('is_active').checked;
+            if (!name || !energyLeft) {
+                showError('error-message', '请填写 Party 名称和精力值！');
+                return;
+            }
+            try {
+                const result = await makeRequest(`/party/${partyId}`, 'PUT', { name, password, energy_left: energyLeft, is_active: isActive });
                 if (result.message === 'Party 更新成功') {
                     alert('Party 更新成功！');
                     location.href = '/party-manage';
                 } else {
-                    alert(result.error || '更新失败，请重试！');
+                    showError('error-message', result.error || '更新 Party 失败，请重试！');
                 }
             } catch (error) {
-                alert('网络错误，请稍后重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑 DineTogether Party</h1>
-            <form id="form" class="flex flex-col space-y-4">
-                <input id="edit_id" type="hidden">
-                <input id="edit_name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑 Party</h1>
+            <form id="form" class="flex flex-col space-y-4" onsubmit="updateParty(event)">
+                <input id="name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="新密码（可选）" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="edit_energy_left" type="number" placeholder="初始能量值" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <label class="flex items-center">
-                    <input id="edit_is_active" type="checkbox" class="mr-2">
-                    <span>活跃状态</span>
+                <input id="energy_left" type="number" placeholder="精力值" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <label class="flex items-center space-x-2">
+                    <input id="is_active" type="checkbox" class="h-5 w-5">
+                    <span>是否活跃</span>
                 </label>
-                <button type="button" onclick="updateParty()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                    保存更改
-                </button>
+                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
+                <button type="button" onclick="location.href='/party-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回 Party 管理</button>
             </form>
         </div>
     </div>

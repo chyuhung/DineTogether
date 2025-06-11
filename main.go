@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// 初始化配置文件
 func initConfig() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
@@ -22,31 +23,76 @@ func initConfig() {
 	}
 }
 
+// 初始化数据库表
+func initDatabase(db *sql.DB) {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT UNIQUE NOT NULL,
+			password TEXT NOT NULL,
+			role TEXT NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS menus (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			description TEXT,
+			energy_cost INTEGER NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS parties (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			password TEXT NOT NULL,
+			energy_left INTEGER NOT NULL,
+			is_active BOOLEAN NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS orders (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			party_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			menu_id INTEGER NOT NULL,
+			FOREIGN KEY (party_id) REFERENCES parties(id),
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			FOREIGN KEY (menu_id) REFERENCES menus(id)
+		);
+	`)
+	if err != nil {
+		log.Fatalf("创建数据库表失败: %v", err)
+	}
+}
+
 func main() {
+	// 初始化配置
 	initConfig()
+
+	// 连接数据库
 	db, err := sql.Open("sqlite3", viper.GetString("database.path"))
 	if err != nil {
-		log.Fatal("Failed to open database:", err)
+		log.Fatalf("打开数据库失败: %v", err)
 	}
 	defer db.Close()
 
+	// 初始化数据库
 	initDatabase(db)
 
+	// 初始化 Gin 引擎
 	r := gin.Default()
 	r.Use(middleware.ErrorHandler())
 
+	// 配置 session
 	store := cookie.NewStore([]byte(viper.GetString("session.secret")))
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400,
+		MaxAge:   86400, // 1天
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
 	r.Use(sessions.Sessions("session", store))
 
+	// 静态文件和模板
 	r.Static("/static", "./static")
 	r.LoadHTMLGlob("templates/*")
 
+	// 登录验证中间件
 	loginRequired := func(c *gin.Context) {
 		session := sessions.Default(c)
 		if session.Get("user_id") == nil {
@@ -58,138 +104,114 @@ func main() {
 		c.Next()
 	}
 
+	// 公共路由
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
-	})
-	r.GET("/dashboard", loginRequired, func(c *gin.Context) {
-		c.HTML(http.StatusOK, "dashboard.html", nil)
 	})
 	r.GET("/login", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "login.html", nil)
 	})
-	r.GET("/logout", loginRequired, func(c *gin.Context) {
-		session := sessions.Default(c)
-		session.Clear()
-		if err := session.Save(); err != nil {
-			log.Printf("退出失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "退出失败"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
-	})
-	r.GET("/api/user", loginRequired, handlers.GetUserInfo(db))
-	r.GET("/api/party", loginRequired, handlers.GetCurrentParty(db))
-	r.GET("/api/check-party", loginRequired, handlers.CheckParty(db))
-	r.GET("/api/party-orders", loginRequired, handlers.GetPartyOrders(db))
-	r.POST("/leave-party", loginRequired, handlers.LeaveParty(db))
+	r.POST("/login", handlers.Login(db))
 	r.GET("/register", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "register.html", nil)
 	})
-	r.GET("/menu-manage", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "menu_manage.html", nil)
-	})
-	r.GET("/party-manage", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "party_manage.html", nil)
-	})
-	r.GET("/user-manage", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "user_manage.html", nil)
-	})
-	r.GET("/create-menu", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_menu.html", nil)
-	})
-	r.GET("/edit-menu/:id", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_menu.html", nil)
-	})
-	r.GET("/create-party", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_party.html", nil)
-	})
-	r.GET("/edit-party/:id", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_party.html", nil)
-	})
-	r.GET("/create-user", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_user.html", nil)
-	})
-	r.GET("/edit-user/:id", loginRequired, handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_user.html", nil)
-	})
-	r.GET("/join-party", loginRequired, func(c *gin.Context) {
-		c.HTML(http.StatusOK, "join_party.html", nil)
-	})
-	r.GET("/change-password", loginRequired, func(c *gin.Context) {
-		c.HTML(http.StatusOK, "change_password.html", nil)
-	})
-	r.GET("/order", loginRequired, func(c *gin.Context) {
-		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		partyID := session.Get("party_id")
-		if partyID == nil {
-			log.Printf("用户 %v 未加入 Party，跳转到 /dashboard", userID)
-			c.Redirect(http.StatusFound, "/dashboard")
-			c.Abort()
-			return
-		}
-		log.Printf("用户 %v 进入点餐页面，Party %v", userID, partyID)
-		c.HTML(http.StatusOK, "order.html", nil)
-	})
 	r.POST("/register", handlers.Register(db))
-	r.POST("/login", handlers.Login(db))
-	r.POST("/change-password", loginRequired, handlers.ChangePassword(db))
-	r.POST("/menus", loginRequired, handlers.AuthMiddleware(db), handlers.CreateMenu(db))
-	r.GET("/menus", handlers.GetMenus(db))
-	r.GET("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.GetMenuByID(db))
-	r.PUT("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.UpdateMenu(db))
-	r.DELETE("/menu/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteMenu(db))
-	r.POST("/parties", loginRequired, handlers.AuthMiddleware(db), handlers.CreateParty(db))
-	r.GET("/parties", handlers.GetParties(db))
-	r.GET("/party/:id", loginRequired, handlers.AuthMiddleware(db), handlers.GetPartyByID(db))
-	r.PUT("/party/:id", loginRequired, handlers.AuthMiddleware(db), handlers.UpdateParty(db))
-	r.DELETE("/party/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteParty(db))
-	r.POST("/users", loginRequired, handlers.AuthMiddleware(db), handlers.CreateUser(db))
-	r.GET("/users", loginRequired, handlers.AuthMiddleware(db), handlers.GetUsers(db))
-	r.GET("/user/:id", loginRequired, handlers.AuthMiddleware(db), handlers.GetUserByID(db))
-	r.PUT("/user/:id", loginRequired, handlers.AuthMiddleware(db), handlers.UpdateUser(db))
-	r.DELETE("/user/:id", loginRequired, handlers.AuthMiddleware(db), handlers.DeleteUser(db))
-	r.POST("/join-party", loginRequired, handlers.JoinParty(db))
-	r.POST("/order", loginRequired, handlers.PlaceOrder(db))
-	r.DELETE("/order/:id", loginRequired, handlers.DeleteOrder(db))
 
-	if err := r.Run(":8080"); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// 需要登录的路由
+	protected := r.Group("/", loginRequired)
+	{
+		protected.GET("/dashboard", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "dashboard.html", nil)
+		})
+		protected.GET("/logout", func(c *gin.Context) {
+			session := sessions.Default(c)
+			session.Clear()
+			if err := session.Save(); err != nil {
+				log.Printf("退出失败: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "退出失败"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
+		})
+		protected.GET("/api/user", handlers.GetUserInfo(db))
+		protected.GET("/api/party", handlers.GetCurrentParty(db))
+		protected.GET("/api/check-party", handlers.CheckParty(db))
+		protected.GET("/api/party-orders", handlers.GetPartyOrders(db))
+		protected.POST("/leave-party", handlers.LeaveParty(db))
+		protected.GET("/join-party", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "join_party.html", nil)
+		})
+		protected.POST("/join-party", handlers.JoinParty(db))
+		protected.GET("/change-password", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "change_password.html", nil)
+		})
+		protected.POST("/change-password", handlers.ChangePassword(db))
+		protected.GET("/order", func(c *gin.Context) {
+			session := sessions.Default(c)
+			userID := session.Get("user_id")
+			partyID := session.Get("party_id")
+			if partyID == nil {
+				log.Printf("用户 %v 未加入 Party，跳转到 /dashboard", userID)
+				c.Redirect(http.StatusFound, "/dashboard")
+				c.Abort()
+				return
+			}
+			log.Printf("用户 %v 进入点餐页面，Party %v", userID, partyID)
+			c.HTML(http.StatusOK, "order.html", nil)
+		})
+		protected.POST("/order", handlers.PlaceOrder(db))
+		protected.DELETE("/order/:id", handlers.DeleteOrder(db))
 	}
-}
 
-func initDatabase(db *sql.DB) {
-	_, err := db.Exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS menus (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            description TEXT,
-            energy_cost INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS parties (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            energy_left INTEGER NOT NULL,
-            is_active BOOLEAN NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            party_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            menu_id INTEGER NOT NULL,
-            FOREIGN KEY (party_id) REFERENCES parties(id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (menu_id) REFERENCES menus(id)
-        );
-    `)
-	if err != nil {
-		log.Fatal("Failed to create tables:", err)
+	// 需要管理员权限的路由
+	admin := r.Group("/", loginRequired, handlers.AuthMiddleware(db))
+	{
+		admin.GET("/menu-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "menu_manage.html", nil)
+		})
+		admin.GET("/party-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "party_manage.html", nil)
+		})
+		admin.GET("/user-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "user_manage.html", nil)
+		})
+		admin.GET("/create-menu", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_menu.html", nil)
+		})
+		admin.GET("/edit-menu/:id", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_menu.html", nil)
+		})
+		admin.GET("/create-party", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_party.html", nil)
+		})
+		admin.GET("/edit-party/:id", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_party.html", nil)
+		})
+		admin.GET("/create-user", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_user.html", nil)
+		})
+		admin.GET("/edit-user/:id", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_user.html", nil)
+		})
+		admin.POST("/menus", handlers.CreateMenu(db))
+		admin.GET("/menus", handlers.GetMenus(db))
+		admin.GET("/menu/:id", handlers.GetMenuByID(db))
+		admin.PUT("/menu/:id", handlers.UpdateMenu(db))
+		admin.DELETE("/menu/:id", handlers.DeleteMenu(db))
+		admin.POST("/parties", handlers.CreateParty(db))
+		admin.GET("/parties", handlers.GetParties(db))
+		admin.GET("/party/:id", handlers.GetPartyByID(db))
+		admin.PUT("/party/:id", handlers.UpdateParty(db))
+		admin.DELETE("/party/:id", handlers.DeleteParty(db))
+		admin.POST("/users", handlers.CreateUser(db))
+		admin.GET("/users", handlers.GetUsers(db))
+		admin.GET("/user/:id", handlers.GetUserByID(db))
+		admin.PUT("/user/:id", handlers.UpdateUser(db))
+		admin.DELETE("/user/:id", handlers.DeleteUser(db))
+	}
+
+	// 启动服务器
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("启动服务器失败: %v", err)
 	}
 }

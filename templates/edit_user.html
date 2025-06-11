@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DineTogether - 编辑用户</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -19,83 +20,66 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            const role = localStorage.getItem('role');
+        window.onload = async function() {
+            if (!await checkAuth('/login', 'admin')) return;
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('id');
             if (!userId) {
-                alert('请先登录！');
-                location.href = '/login';
-            } else if (role !== 'admin') {
-                alert('需要管理员权限！');
-                location.href = '/';
-            } else {
-                loadUser();
-            }
-        }
-
-        async function loadUser() {
-            const userId = location.pathname.split('/').pop();
-            try {
-                const response = await fetch(`/user/${userId}`, { credentials: 'include' });
-                const user = await response.json();
-                if (user.error) {
-                    alert(user.error);
-                    location.href = '/user-manage';
-                    return;
-                }
-                document.getElementById('edit_id').value = user.id;
-                document.getElementById('edit_username').value = user.username;
-                document.getElementById('edit_role').value = user.role;
-            } catch (error) {
-                alert('加载用户详情失败，请稍后重试！');
-                location.href = '/user-manage';
-            }
-        }
-
-        async function updateUser() {
-            const id = document.getElementById('edit_id').value;
-            const username = document.getElementById('edit_username').value;
-            const password = document.getElementById('password').value;
-            const role = document.getElementById('edit_role').value;
-            if (!username || !role) {
-                alert('请填写用户名和角色！');
+                showError('error-message', '无效的用户 ID！');
                 return;
             }
             try {
-                const response = await fetch(`/user/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, role }),
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest(`/user/${userId}`);
+                if (result.message === '获取用户信息成功') {
+                    document.getElementById('username').value = result.username;
+                    document.getElementById('role').value = result.role;
+                } else {
+                    showError('error-message', result.error || '加载用户失败！');
+                }
+            } catch (error) {
+                showError('error-message', '网络错误，请重试！');
+            }
+        }
+
+        async function updateUser(event) {
+            event.preventDefault();
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('id');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+            if (!username || !role) {
+                showError('error-message', '请填写用户名和角色！');
+                return;
+            }
+            try {
+                const result = await makeRequest(`/user/${userId}`, 'PUT', { username, password, role });
                 if (result.message === '用户更新成功') {
                     alert('用户更新成功！');
                     location.href = '/user-manage';
                 } else {
-                    alert(result.error || '更新失败，请重试！');
+                    showError('error-message', result.error || '更新用户失败，请重试！');
                 }
             } catch (error) {
-                alert('网络错误，请稍后重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑 DineTogether 用户</h1>
-            <form id="form" class="flex flex-col space-y-4">
-                <input id="edit_id" type="hidden">
-                <input id="edit_username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑用户</h1>
+            <form id="form" class="flex flex-col space-y-4" onsubmit="updateUser(event)">
+                <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="新密码（可选）" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <select id="edit_role" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <select id="role" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                     <option value="guest">普通用户</option>
                     <option value="admin">管理员</option>
                 </select>
-                <button type="button" onclick="updateUser()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                    保存更改
-                </button>
+                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
+                <button type="button" onclick="location.href='/user-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回用户管理</button>
             </form>
         </div>
     </div>

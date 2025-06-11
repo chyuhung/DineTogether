@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DineTogether - 欢迎</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -24,9 +25,10 @@
         <div class="bg-white rounded-2xl shadow-xl p-8 fade-in text-center">
             <h1 class="text-4xl font-bold text-gray-800 mb-4">DineTogether</h1>
             <p class="text-gray-600 mb-6">与朋友一起点餐，共享美食的快乐！</p>
-            <button onclick="location.href='/dashboard'" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                Join DineTogether
+            <button onclick="location.href='/dashboard'" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                加入 DineTogether
             </button>
+            <div id="error-message" class="text-red-600 text-center hidden mt-4"></div>
         </div>
     </div>
 </body>

@@ -10,28 +10,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Order 订单结构体，用于 JSON 响应
 type Order struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	MenuName string `json:"menu_name"`
 }
 
+// GetPartyOrders 获取当前 Party 的订单
 func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(400, "未加入任何 Party"))
+			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
 			return
 		}
 		rows, err := db.Query(`
-            SELECT o.id, u.username, m.name
-            FROM orders o
-            JOIN users u ON o.user_id = u.id
-            JOIN menus m ON o.menu_id = m.id
-            WHERE o.party_id = ? AND o.menu_id != 0`, partyID)
+			SELECT o.id, u.username, m.name
+			FROM orders o
+			JOIN users u ON o.user_id = u.id
+			JOIN menus m ON o.menu_id = m.id
+			WHERE o.party_id = ? AND o.menu_id != 0`, partyID)
 		if err != nil {
-			log.Printf("获取 Party 订单失败: %v", err)
+			log.Printf("获取 Party %v 订单失败: %v", partyID, err)
 			c.Error(errors.ErrInternalServer)
 			return
 		}
@@ -47,6 +49,6 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 			orders = append(orders, order)
 		}
 		log.Printf("获取 Party %v 的订单成功，数量: %d", partyID, len(orders))
-		c.JSON(http.StatusOK, orders)
+		c.JSON(http.StatusOK, gin.H{"message": "获取订单成功", "orders": orders})
 	}
 }

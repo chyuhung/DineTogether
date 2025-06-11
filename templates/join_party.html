@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DineTogether - 加入 Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -20,53 +21,30 @@
     </style>
     <script>
         window.onload = async function() {
-            try {
-                const response = await fetch('/api/user', { credentials: 'include' });
-                const result = await response.json();
-                if (result.error) {
-                    alert('请先登录！');
-                    location.href = '/login';
-                }
-            } catch (error) {
-                console.error('检查用户状态失败:', error);
-                alert('网络错误，请稍后重试！');
-                location.href = '/login';
-            }
+            const user = await checkAuth('/login');
+            if (!user) return;
+            document.getElementById('user_id').value = user.userId;
         }
 
-        async function joinParty() {
+        async function joinParty(event) {
+            event.preventDefault();
             const partyName = document.getElementById('party_name').value;
             const password = document.getElementById('password').value;
+            const userId = document.getElementById('user_id').value;
+            if (!partyName || !password || !userId) {
+                showError('error-message', '请填写 Party 名称和密码！');
+                return;
+            }
             try {
-                const userResponse = await fetch('/api/user', { credentials: 'include' });
-                const userResult = await userResponse.json();
-                if (userResult.error) {
-                    alert('请先登录！');
-                    location.href = '/login';
-                    return;
-                }
-                const userId = userResult.user_id;
-                if (!partyName || !password) {
-                    alert('请填写所有字段！');
-                    return;
-                }
-                const response = await fetch('/join-party', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ party_name: partyName, password, user_id: userId }),
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest('/join-party', 'POST', { party_name: partyName, password, user_id: parseInt(userId) });
                 if (result.message === '加入 Party 成功') {
                     alert('加入 Party 成功！');
-                    document.getElementById('form').reset();
                     location.href = '/dashboard';
                 } else {
-                    alert(result.error || '加入失败，请重试！');
+                    showError('error-message', result.error || '加入 Party 失败，请重试！');
                 }
             } catch (error) {
-                console.error('加入 Party 错误:', error);
-                alert('网络错误，请稍后重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
     </script>
@@ -74,13 +52,14 @@
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">加入 DineTogether Party</h1>
-            <form id="form" class="flex flex-col space-y-4">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">加入 Party</h1>
+            <form id="form" class="flex flex-col space-y-4" onsubmit="joinParty(event)">
                 <input id="party_name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="password" type="password" placeholder="Party 密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <button type="button" onclick="joinParty()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
-                    加入 Party
-                </button>
+                <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="user_id" type="hidden" value="">
+                <div id="error-message" class="text-red-600 text-center hidden"></div>
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">加入 Party</button>
+                <button type="button" onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回仪表盘</button>
             </form>
         </div>
     </div>

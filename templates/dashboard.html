@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DineTogether - Dashboard</title>
+    <title>DineTogether - 仪表盘</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -20,31 +21,18 @@
     </style>
     <script>
         window.onload = async function() {
+            const user = await checkAuth('/login');
+            if (!user) return;
+
             const container = document.getElementById('action-container');
             const title = document.getElementById('title');
             try {
-                const userResponse = await fetch('/api/user', {
-                    credentials: 'include'
-                });
-                const userResult = await userResponse.json();
-                if (userResult.error) {
-                    console.warn('未登录或 session失效:', userResult.error);
-                    location.href = '/login';
-                    return;
-                }
-                const { role } = userResult;
+                const partyResult = await makeRequest('/api/party');
+                title.textContent = partyResult.hasParty
+                    ? `DineTogether 仪表盘 - ${partyResult.party_name}`
+                    : 'DineTogether 仪表盘';
 
-                const partyResponse = await fetch('/api/party', {
-                    credentials: 'include'
-                });
-                const partyResult = await partyResponse.json();
-                if (partyResult.hasParty) {
-                    title.innerHTML = `DineTogether 仪表盘 - ${partyResult.party_name}`;
-                } else {
-                    title.innerHTML = 'DineTogether 仪表盘';
-                }
-
-                if (role === 'admin') {
+                if (user.role === 'admin') {
                     container.innerHTML = `
                         <button onclick="location.href='/menu-manage'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
                             菜单管理
@@ -63,81 +51,64 @@
                         </button>
                     `;
                 } else {
-                    const partyCheckResponse = await fetch('/api/check-party', {
-                        credentials: 'include'
-                    });
-                    const partyCheckResult = await partyCheckResponse.json();
-                    console.log('Party 状态:', partyCheckResult);
-                    if (partyCheckResult.hasParty) {
-                        container.innerHTML = `
-                            <button onclick="location.href='/order'" class="bg-green-500 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
-                                开始点餐
-                            </button>
-                            <button onclick="leaveParty()" class="bg-red-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
-                                离开 Party
-                            </button>
-                            <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
-                                修改密码
-                            </button>
-                            <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
-                                退出登录
-                            </button>
-                        `;
-                    } else {
-                        container.innerHTML = `
-                            <button onclick="location.href='/join-party'" class="bg-green-500 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
-                                加入 Party
-                            </button>
-                            <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
-                                修改密码
-                            </button>
-                            <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
-                                退出登录
-                            </button>
-                        `;
-                    }
+                    const partyCheckResult = await makeRequest('/api/check-party');
+                    container.innerHTML = partyCheckResult.hasParty ? `
+                        <button onclick="location.href='/order'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            开始点餐
+                        </button>
+                        <button onclick="leaveParty()" class="bg-red-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            离开 Party
+                        </button>
+                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            修改密码
+                        </button>
+                        <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                            退出登录
+                        </button>
+                    ` : `
+                        <button onclick="location.href='/join-party'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            加入 Party
+                        </button>
+                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                            修改密码
+                        </button>
+                        <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                            退出登录
+                        </button>
+                    `;
                 }
             } catch (error) {
-                console.error('加载用户或 Party 状态失败:', error);
-                container.innerHTML = '<p class="text-red-600 text-center">加载失败，请刷新</p>';
+                showError('error-message', '加载失败，请刷新页面！');
             }
         }
 
         async function logout() {
             if (!confirm('确定要退出登录吗？')) return;
             try {
-                const response = await fetch('/logout', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest('/logout');
                 if (result.message === '退出成功') {
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('role');
                     location.href = '/';
                 } else {
-                    alert('退出失败，请重试！');
+                    showError('error-message', result.error || '退出失败，请重试！');
                 }
             } catch (error) {
-                console.error('退出错误:', error);
-                alert('网络错误，请重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
 
         async function leaveParty() {
             if (!confirm('确定要离开 Party 吗？')) return;
             try {
-                const response = await fetch('/leave-party', {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                const result = await response.json();
-                if (result.message === '已离开 Party') {
+                const result = await makeRequest('/leave-party', 'POST');
+                if (result.message === '离开 Party 成功') {
                     location.href = '/dashboard';
                 } else {
-                    alert(result.error || '离开 Party 失败，请重试！');
+                    showError('error-message', result.error || '离开 Party 失败，请重试！');
                 }
             } catch (error) {
-                console.error('离开 Party 错误:', error);
-                alert('网络错误，请重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
     </script>
@@ -147,6 +118,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 id="title" class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 仪表盘</h1>
             <p class="text-center text-gray-600 mb-6">选择你的下一步！</p>
+            <div id="error-message" class="text-red-600 text-center hidden mb-4"></div>
             <div id="action-container" class="flex flex-col space-y-4"></div>
         </div>
     </div>

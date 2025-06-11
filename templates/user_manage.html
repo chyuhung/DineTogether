@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DineTogether - 人员管理</title>
+    <title>DineTogether - 用户管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/utils.js"></script>
     <style>
-        @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .card-fade-in {
-            animation: cardFadeIn 0.3s ease-out;
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
         .btn-hover:hover {
             transform: scale(1.05);
@@ -19,76 +20,67 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            const role = localStorage.getItem('role');
-            if (!userId) {
-                alert('请先登录！');
-                location.href = '/login';
-            } else if (role !== 'admin') {
-                alert('需要管理员权限！');
-                location.href = '/';
-            } else {
-                loadUsers();
-            }
-        }
-
-        async function loadUsers() {
+        window.onload = async function() {
+            if (!await checkAuth('/login', 'admin')) return;
             try {
-                const response = await fetch('/users', { credentials: 'include' });
-                const users = await response.json();
-                const userList = document.getElementById('user-list');
-                userList.innerHTML = '';
-                users.forEach((user, index) => {
-                    userList.innerHTML += `
-                        <div class="p-4 bg-white rounded-xl shadow-md mb-4 card-fade-in" style="animation-delay: ${index * 0.1}s">
-                            <h3 class="text-xl font-bold text-gray-800">${user.username}</h3>
-                            <p class="text-gray-600">角色: ${user.role === 'admin' ? '管理员' : '普通用户'}</p>
-                            <div class="mt-2 flex space-x-2">
-                                <button onclick="location.href='/edit-user/${user.id}'" class="bg-blue-600 text-white p-2 rounded-lg font-semibold btn-hover">
-                                    编辑
-                                </button>
-                                <button onclick="deleteUser(${user.id})" class="bg-red-600 text-white p-2 rounded-lg font-semibold btn-hover">
-                                    删除
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                });
+                const result = await makeRequest('/users');
+                if (result.message === '获取用户列表成功') {
+                    const tbody = document.getElementById('user-table').getElementsByTagName('tbody')[0];
+                    result.users.forEach(user => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td class="border px-4 py-2">${user.id}</td>
+                            <td class="border px-4 py-2">${user.username}</td>
+                            <td class="border px-4 py-2">${user.role === 'admin' ? '管理员' : '普通用户'}</td>
+                            <td class="border px-4 py-2">
+                                <button onclick="location.href='/edit-user?id=${user.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
+                                <button onclick="deleteUser(${user.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                            </td>
+                        `;
+                    });
+                } else {
+                    showError('error-message', result.error || '加载用户列表失败！');
+                }
             } catch (error) {
-                alert('加载用户失败，请稍后重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
 
         async function deleteUser(userId) {
-            if (!confirm('确定删除此用户？')) return;
+            if (!confirm('确定要删除此用户吗？')) return;
             try {
-                const response = await fetch(`/user/${userId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-                const result = await response.json();
+                const result = await makeRequest(`/user/${userId}`, 'DELETE');
                 if (result.message === '用户删除成功') {
                     alert('用户删除成功！');
-                    loadUsers();
+                    location.reload();
                 } else {
-                    alert(result.error || '删除失败，请重试！');
+                    showError('error-message', result.error || '删除用户失败，请重试！');
                 }
             } catch (error) {
-                alert('网络错误，请稍后重试！');
+                showError('error-message', '网络错误，请重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen font-sans">
-    <div class="container mx-auto p-4 max-w-3xl">
-        <h1 class="text-3xl font-bold text-center text-white mb-6">DineTogether 人员管理</h1>
-        <div class="mb-6">
-            <button onclick="location.href='/create-user'" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                新建用户
-            </button>
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">用户管理</h1>
+            <div id="error-message" class="text-red-600 text-center hidden mb-4"></div>
+            <button onclick="location.href='/create-user'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-4 btn-hover w-full">新建用户</button>
+            <table id="user-table" class="min-w-full bg-white border">
+                <thead>
+                    <tr>
+                        <th class="border px-4 py-2">ID</th>
+                        <th class="border px-4 py-2">用户名</th>
+                        <th class="border px-4 py-2">角色</th>
+                        <th class="border px-4 py-2">操作</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
         </div>
-        <div id="user-list" class="flex flex-col space-y-4"></div>
     </div>
 </body>
 </html>
