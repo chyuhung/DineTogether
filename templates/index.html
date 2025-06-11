@@ -19,13 +19,21 @@
             transition: transform 0.2s ease-in-out;
         }
     </style>
+    <script>
+        async function joinDineTogether() {
+            const user = await checkAuth('/login');
+            if (user) {
+                location.href = '/dashboard';
+            }
+        }
+    </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-8 fade-in text-center">
             <h1 class="text-4xl font-bold text-gray-800 mb-4">DineTogether</h1>
             <p class="text-gray-600 mb-6">与朋友一起点餐，共享美食的快乐！</p>
-            <button onclick="location.href='/dashboard'" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+            <button onclick="joinDineTogether()" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
                 加入 DineTogether
             </button>
             <div id="error-message" class="text-red-600 text-center hidden mt-4"></div>
