@@ -24,13 +24,12 @@
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const role = document.getElementById('role').value;
-            if (!username || !password || !role) {
-                showError('error-message', '请填写所有字段！');
+            if (!username || !password) {
+                showError('error-message', '请填写用户名和密码！');
                 return;
             }
             try {
-                const result = await makeRequest('/register', 'POST', { username, password, role });
+                const result = await makeRequest('/register', 'POST', { username, password, role: 'guest' });
                 if (result.message === '注册成功') {
                     alert('注册成功，请登录！');
                     location.href = '/login';
@@ -50,10 +49,6 @@
             <form id="form" class="flex flex-col space-y-4" onsubmit="register(event)">
                 <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <select id="role" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                    <option value="guest">普通用户</option>
-                    <option value="admin">管理员</option>
-                </select>
                 <div id="error-message" class="text-red-600 text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">注册</button>
                 <p class="text-center text-gray-500">已有账号？<a href="/login" class="text-blue-600 hover:underline">登录</a></p>

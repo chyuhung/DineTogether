@@ -34,14 +34,15 @@ func Register(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.ErrBadRequest)
 			return
 		}
-		if user.Username == "" || user.Password == "" || user.Role == "" {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "用户名、密码和角色不能为空"))
+		if user.Username == "" || user.Password == "" {
+			c.Error(errors.NewAppError(http.StatusBadRequest, "用户名和密码不能为空"))
 			return
 		}
 		if err := ValidatePassword(user.Password); err != nil {
 			c.Error(err)
 			return
 		}
+		user.Role = "guest" // 固定角色为普通用户
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("密码加密失败: %v", err)
