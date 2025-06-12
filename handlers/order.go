@@ -102,10 +102,6 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.ErrNotFound)
 			return
 		}
-		if orderUserID != userID {
-			c.Error(errors.NewAppError(http.StatusForbidden, "无权限删除他人订单"))
-			return
-		}
 		var energyCost int
 		row = db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", menuID)
 		if err := row.Scan(&energyCost); err != nil {
