@@ -17,7 +17,6 @@ async function checkAuth(redirectTo, requiredRole = null) {
     const userId = localStorage.getItem('user_id');
     const role = localStorage.getItem('role');
     if (!userId) {
-        alert('请先登录！');
         location.href = '/login';
         return null;
     }
