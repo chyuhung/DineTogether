@@ -20,6 +20,8 @@
         }
     </style>
     <script>
+        let imageURLs = [];
+
         window.onload = async function() {
             if (!await checkAuth('/login', 'admin')) return;
             const urlParams = new URLSearchParams(window.location.search);
@@ -34,11 +36,68 @@
                     document.getElementById('name').value = result.menu.name;
                     document.getElementById('description').value = result.menu.description || '';
                     document.getElementById('energy_cost').value = result.menu.energy_cost;
+                    imageURLs = result.menu.image_urls || [];
+                    updateImagePreview();
                 } else {
                     showMessage('error-message', result.error || '加载菜品失败！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
+            }
+            document.getElementById('images').addEventListener('change', async (event) => {
+                const files = event.target.files;
+                if (files.length + imageURLs.length > 5) {
+                    showMessage('error-message', '最多上传5张图片！');
+                    event.target.value = '';
+                    return;
+                }
+                for (const file of files) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        showMessage('error-message', '每张图片不能超过2MB！');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                        showMessage('error-message', '仅支持jpg/png格式！');
+                        event.target.value = '';
+                        return;
+                    }
+                }
+                try {
+                    const urls = await uploadImages(files);
+                    imageURLs = imageURLs.concat(urls);
+                    updateImagePreview();
+                    event.target.value = '';
+                } catch (error) {
+                    showMessage('error-message', error.message);
+                    event.target.value = '';
+                }
+            });
+        }
+
+        function updateImagePreview() {
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            imageURLs.forEach(url => {
+                const container = document.createElement('div');
+                container.className = 'relative w-24 h-24 m-1';
+                container.innerHTML = `
+                    <img src="${url}" class="w-full h-full object-cover rounded">
+                    <button type="button" class="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center" onclick="removeImage('${url}')">×</button>
+                `;
+                preview.appendChild(container);
+            });
+        }
+
+        async function removeImage(url) {
+            if (!confirm('确定要删除此图片吗？')) return;
+            try {
+                await deleteImage(url);
+                imageURLs = imageURLs.filter(u => u !== url);
+                updateImagePreview();
+                showMessage('error-message', '图片删除成功！', false);
+            } catch (error) {
+                showMessage('error-message', error.message);
             }
         }
 
@@ -54,7 +113,12 @@
                 return;
             }
             try {
-                const result = await makeRequest(`/menu/${menuId}`, 'PUT', { name, description, energy_cost: energyCost });
+                const result = await makeRequest(`/menu/${menuId}`, 'PUT', {
+                    name,
+                    description,
+                    energy_cost: energyCost,
+                    image_urls: imageURLs
+                });
                 if (result.message === '菜品更新成功') {
                     showMessage('error-message', '菜品更新成功！', false);
                     setTimeout(() => location.href = '/menu-manage', 1000);
@@ -62,7 +126,7 @@
                     showMessage('error-message', result.error || '更新菜品失败，请重试！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
     </script>
@@ -74,7 +138,9 @@
             <form id="form" class="flex flex-col space-y-4" onsubmit="updateMenu(event)">
                 <input id="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <textarea id="description" placeholder="描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
-                <input id="energy_cost" type="number" placeholder="精力消耗" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="energy_cost" type="number" placeholder="精力消耗" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="images" type="file" accept="image/jpeg,image/png" multiple class="p-3 border rounded-lg">
+                <div id="image-preview" class="flex flex-wrap"></div>
                 <div id="error-message" class="text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
                 <button type="button" onclick="location.href='/menu-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回菜单管理</button>

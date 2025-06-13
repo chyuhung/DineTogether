@@ -33,7 +33,9 @@
                             <td class="border px-4 py-2">${menu.name}</td>
                             <td class="border px-4 py-2">${menu.description || ''}</td>
                             <td class="border px-4 py-2">${menu.energy_cost}</td>
+                            <td class="border px-4 py-2">${menu.image_urls.length}</td>
                             <td class="border px-4 py-2">
+                                <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
                                 <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
                                 <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
                             </td>
@@ -61,6 +63,14 @@
                 showMessage('error-message', error.message || '删除菜品失败，请稍后重试！');
             }
         }
+
+        function viewMenuDetail(menuId) {
+            if (menuId) {
+                location.href = `/menu-detail?id=${menuId}`;
+            } else {
+                showMessage('error-message', '无效的菜品 ID！');
+            }
+        }
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
@@ -76,6 +86,7 @@
                         <th class="border px-4 py-2">名称</th>
                         <th class="border px-4 py-2">描述</th>
                         <th class="border px-4 py-2">精力消耗</th>
+                        <th class="border px-4 py-2">图片数量</th>
                         <th class="border px-4 py-2">操作</th>
                     </tr>
                 </thead>

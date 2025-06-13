@@ -4,6 +4,7 @@ import (
 	"DineTogether/errors"
 	"DineTogether/models"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 // GetMenus 获取所有菜品
 func GetMenus(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, name, description, energy_cost FROM menus")
+		rows, err := db.Query("SELECT id, name, description, energy_cost, image_urls FROM menus")
 		if err != nil {
 			log.Printf("查询菜品失败: %v", err)
 			c.Error(errors.ErrInternalServer)
@@ -24,13 +25,22 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
 		var menus []models.Menu
 		for rows.Next() {
 			var menu models.Menu
-			var description sql.NullString
-			if err := rows.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost); err != nil {
+			var description, imageURLs sql.NullString
+			if err := rows.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost, &imageURLs); err != nil {
 				log.Printf("扫描菜品失败: %v", err)
 				c.Error(errors.ErrInternalServer)
 				return
 			}
 			menu.Description = description.String
+			if imageURLs.Valid {
+				if err := json.Unmarshal([]byte(imageURLs.String), &menu.ImageURLs); err != nil {
+					log.Printf("解析 image_urls 失败: %v", err)
+					c.Error(errors.ErrInternalServer)
+					return
+				}
+			} else {
+				menu.ImageURLs = []string{}
+			}
 			menus = append(menus, menu)
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "获取菜品列表成功", "menus": menus})
@@ -49,7 +59,13 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.NewAppError(http.StatusBadRequest, "菜品名称和精力消耗不能为空且精力消耗必须大于0"))
 			return
 		}
-		result, err := db.Exec("INSERT INTO menus (name, description, energy_cost) VALUES (?, ?, ?)", menu.Name, menu.Description, menu.EnergyCost)
+		imageURLsJSON, err := json.Marshal(menu.ImageURLs)
+		if err != nil {
+			log.Printf("序列化 image_urls 失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		result, err := db.Exec("INSERT INTO menus (name, description, energy_cost, image_urls) VALUES (?, ?, ?, ?)", menu.Name, menu.Description, menu.EnergyCost, string(imageURLsJSON))
 		if err != nil {
 			log.Printf("创建菜品失败: %v", err)
 			c.Error(errors.ErrInternalServer)
@@ -63,15 +79,20 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
 // GetMenu 获取单个菜品
 func GetMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
+		idStr := c.Param("id")
+		if idStr == "undefined" || idStr == "" {
+			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的菜品 ID"))
+			return
+		}
+		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			c.Error(errors.ErrBadRequest)
 			return
 		}
 		var menu models.Menu
-		var description sql.NullString
-		row := db.QueryRow("SELECT id, name, description, energy_cost FROM menus WHERE id = ?", id)
-		if err := row.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost); err != nil {
+		var description, imageURLs sql.NullString
+		row := db.QueryRow("SELECT id, name, description, energy_cost, image_urls FROM menus WHERE id = ?", id)
+		if err := row.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost, &imageURLs); err != nil {
 			if err == sql.ErrNoRows {
 				c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
 			} else {
@@ -81,6 +102,15 @@ func GetMenu(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		menu.Description = description.String
+		if imageURLs.Valid {
+			if err := json.Unmarshal([]byte(imageURLs.String), &menu.ImageURLs); err != nil {
+				log.Printf("解析 image_urls 失败: %v", err)
+				c.Error(errors.ErrInternalServer)
+				return
+			}
+		} else {
+			menu.ImageURLs = []string{}
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "获取菜品成功", "menu": menu})
 	}
 }
@@ -102,7 +132,13 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
 			c.Error(errors.NewAppError(http.StatusBadRequest, "菜品名称和精力消耗不能为空且精力消耗必须大于0"))
 			return
 		}
-		result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ? WHERE id = ?", menu.Name, menu.Description, menu.EnergyCost, id)
+		imageURLsJSON, err := json.Marshal(menu.ImageURLs)
+		if err != nil {
+			log.Printf("序列化 image_urls 失败: %v", err)
+			c.Error(errors.ErrInternalServer)
+			return
+		}
+		result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ?, image_urls = ? WHERE id = ?", menu.Name, menu.Description, menu.EnergyCost, string(imageURLsJSON), id)
 		if err != nil {
 			log.Printf("更新菜品失败: %v", err)
 			c.Error(errors.ErrInternalServer)

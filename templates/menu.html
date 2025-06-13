@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DineTogether - 创建菜谱</title>
+    <title>DineTogether - 新建菜品</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/utils.js"></script>
     <style>
@@ -20,38 +20,75 @@
         }
     </style>
     <script>
-        window.onload = function() {
-            const userId = localStorage.getItem('user_id');
-            const role = localStorage.getItem('role');
-            if (!userId) {
-                location.href = '/login';
-            } else if (role !== 'admin') {
-                showMessage('error-message', '需要管理员权限！');
-                setTimeout(() => location.href = '/', 1000);
-            }
+        let imageURLs = [];
+
+        window.onload = async function() {
+            if (!await checkAuth('/login', 'admin')) return;
+            document.getElementById('images').addEventListener('change', async (event) => {
+                const files = event.target.files;
+                if (files.length > 5) {
+                    showMessage('error-message', '最多上传5张图片！');
+                    event.target.value = '';
+                    return;
+                }
+                for (const file of files) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        showMessage('error-message', '每张图片不能超过2MB！');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                        showMessage('error-message', '仅支持jpg/png格式！');
+                        event.target.value = '';
+                        return;
+                    }
+                }
+                try {
+                    const urls = await uploadImages(files);
+                    imageURLs = imageURLs.concat(urls);
+                    updateImagePreview();
+                } catch (error) {
+                    showMessage('error-message', error.message);
+                    event.target.value = '';
+                }
+            });
         }
 
-        async function createMenu() {
+        function updateImagePreview() {
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            imageURLs.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-24 h-24 object-cover rounded m-1';
+                preview.appendChild(img);
+            });
+        }
+
+        async function createMenu(event) {
+            event.preventDefault();
             const name = document.getElementById('name').value;
             const description = document.getElementById('description').value;
             const energyCost = parseInt(document.getElementById('energy_cost').value);
-            if (!name || !description || !energyCost || energyCost <= 0) {
-                showMessage('error-message', '请填写所有字段，且能量值需为正整数！');
+            if (!name || !energyCost) {
+                showMessage('error-message', '请填写菜品名称和精力消耗！');
                 return;
             }
             try {
-                const response = await fetch('/menu', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, description, energy_cost: energyCost }),
-                    credentials: 'include'
+                const result = await makeRequest('/menus', 'POST', {
+                    name,
+                    description,
+                    energy_cost: energyCost,
+                    image_urls: imageURLs
                 });
-                const result = await response.json();
-                if (result.message === '菜谱创建成功') {
-                    showMessage('error-message', '菜谱创建成功！', false);
+                if (result.message === '菜品创建成功') {
+                    showMessage('error-message', '菜品创建成功！', false);
                     document.getElementById('form').reset();
+                    imageURLs = [];
+                    updateImagePreview();
+                    setTimeout(() => location.href = '/menu-manage', 1000);
                 } else {
-                    showMessage('error-message', result.error || '创建失败，请重试！');
+                    showMessage('error-message', result.error || '创建菜品失败，请重试！');
                 }
             } catch (error) {
                 showMessage('error-message', error.message || '网络错误，请稍后重试！');
@@ -59,18 +96,19 @@
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-800 min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
     <div class="container mx-auto p-4 max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">创建 DineTogether 菜谱</h1>
-            <form id="form" class="flex flex-col space-y-4">
-                <input id="name" type="text" name="name" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <textarea id="description" name="description" placeholder="菜品描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"></textarea>
-                <input id="energy_cost" name="energy_cost" type="number" placeholder="所需能量值" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">新建菜品</h1>
+            <form id="form" class="flex flex-col space-y-4" onsubmit="createMenu(event)">
+                <input id="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <textarea id="description" placeholder="描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
+                <input id="energy_cost" type="number" placeholder="精力消耗" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="images" type="file" accept="image/jpeg,image/png" multiple class="p-3 border rounded-lg">
+                <div id="image-preview" class="flex flex-wrap"></div>
                 <div id="error-message" class="text-center hidden"></div>
-                <button type="button" onclick="createMenu()" class="bg-purple-600 text-white p-3 rounded-lg font-semibold btn-hover">
-                    创建菜谱
-                </button>
+                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">创建菜品</button>
+                <button type="button" onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回仪表盘</button>
             </form>
         </div>
     </div>

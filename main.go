@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -29,6 +30,12 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("数据库连接测试失败: %v", err)
 	}
+	// 执行迁移：添加 image_urls 字段
+	_, err = db.Exec("ALTER TABLE menus ADD COLUMN image_urls TEXT DEFAULT '[]'")
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		log.Printf("执行数据库迁移失败: %v", err)
+	}
+
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
@@ -143,11 +150,16 @@ func main() {
 	r.GET("/edit-user", handlers.AuthMiddleware(db), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "edit_user.html", nil)
 	})
+	r.POST("/upload-image", handlers.UploadImage())
+	r.POST("/delete-image", handlers.AuthMiddleware(db), handlers.DeleteImage())
+	r.GET("/menu-detail", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "menu_detail.html", nil)
+	})
 
 	// API 路由（保持不变）
 	r.GET("/menus", handlers.GetMenus(db))
 	r.POST("/menus", handlers.AuthMiddleware(db), handlers.CreateMenu(db))
-	r.GET("/menu/:id", handlers.AuthMiddleware(db), handlers.GetMenu(db))
+	r.GET("/menu/:id", handlers.GetMenu(db))
 	r.PUT("/menu/:id", handlers.AuthMiddleware(db), handlers.UpdateMenu(db))
 	r.DELETE("/menu/:id", handlers.AuthMiddleware(db), handlers.DeleteMenu(db))
 	r.GET("/parties", handlers.AuthMiddleware(db), handlers.GetParties(db))

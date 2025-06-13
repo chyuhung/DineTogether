@@ -45,15 +45,24 @@
                         if (orderResult.orders.length === 0) {
                             const row = tbody.insertRow();
                             row.innerHTML = `
-                                <td colspan="4" class="border px-4 py-2 text-center">没有订单记录</td>
+                                <td colspan="5" class="border px-4 py-2 text-center">没有订单记录</td>
                             `;
                         } else {
+                            const menuMap = new Map();
+                            menuResult.menus.forEach(menu => menuMap.set(menu.id, menu));
                             orderResult.orders.forEach(order => {
+                                const menu = menuMap.get(order.menu_id) || {};
+                                const imageUrl = menu.image_urls && menu.image_urls[0] ? menu.image_urls[0] : '/static/placeholder.jpg';
                                 const row = tbody.insertRow();
                                 row.innerHTML = `
                                     <td class="border px-4 py-2">${order.id}</td>
                                     <td class="border px-4 py-2">${order.username}</td>
-                                    <td class="border px-4 py-2">${order.menu_name}</td>
+                                    <td class="border px-4 py-2">
+                                        <a href="javascript:void(0)" onclick="viewMenuDetail(${order.menu_id})" class="text-blue-600 hover:underline">${order.menu_name}</a>
+                                    </td>
+                                    <td class="border px-4 py-2">
+                                        <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
+                                    </td>
                                     <td class="border px-4 py-2">
                                         <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
                                     </td>
@@ -108,6 +117,14 @@
                 showMessage('error-message', error.message || '删除订单失败，请稍后重试！');
             }
         }
+
+        function viewMenuDetail(menuId) {
+            if (menuId) {
+                location.href = `/menu-detail?id=${menuId}`;
+            } else {
+                showMessage('error-message', '无效的菜品 ID！');
+            }
+        }
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
@@ -127,6 +144,7 @@
                         <th class="border px-4 py-2">订单 ID</th>
                         <th class="border px-4 py-2">用户名</th>
                         <th class="border px-4 py-2">菜品</th>
+                        <th class="border px-4 py-2">图片</th>
                         <th class="border px-4 py-2">操作</th>
                     </tr>
                 </thead>

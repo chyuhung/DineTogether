@@ -20,8 +20,49 @@
         }
     </style>
     <script>
+        let imageURLs = [];
+
         window.onload = async function() {
             if (!await checkAuth('/login', 'admin')) return;
+            document.getElementById('images').addEventListener('change', async (event) => {
+                const files = event.target.files;
+                if (files.length > 5) {
+                    showMessage('error-message', '最多上传5张图片！');
+                    event.target.value = '';
+                    return;
+                }
+                for (const file of files) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        showMessage('error-message', '每张图片不能超过2MB！');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                        showMessage('error-message', '仅支持jpg/png格式！');
+                        event.target.value = '';
+                        return;
+                    }
+                }
+                try {
+                    const urls = await uploadImages(files);
+                    imageURLs = imageURLs.concat(urls);
+                    updateImagePreview();
+                } catch (error) {
+                    showMessage('error-message', error.message);
+                    event.target.value = '';
+                }
+            });
+        }
+
+        function updateImagePreview() {
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            imageURLs.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-24 h-24 object-cover rounded m-1';
+                preview.appendChild(img);
+            });
         }
 
         async function createMenu(event) {
@@ -34,10 +75,17 @@
                 return;
             }
             try {
-                const result = await makeRequest('/menus', 'POST', { name, description, energy_cost: energyCost });
+                const result = await makeRequest('/menus', 'POST', {
+                    name,
+                    description,
+                    energy_cost: energyCost,
+                    image_urls: imageURLs
+                });
                 if (result.message === '菜品创建成功') {
                     showMessage('error-message', '菜品创建成功！', false);
                     document.getElementById('form').reset();
+                    imageURLs = [];
+                    updateImagePreview();
                     setTimeout(() => location.href = '/menu-manage', 1000);
                 } else {
                     showMessage('error-message', result.error || '创建菜品失败，请重试！');
@@ -55,7 +103,9 @@
             <form id="form" class="flex flex-col space-y-4" onsubmit="createMenu(event)">
                 <input id="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <textarea id="description" placeholder="描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
-                <input id="energy_cost" type="number" placeholder="精力消耗" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="energy_cost" type="number" placeholder="精力消耗" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="images" type="file" accept="image/jpeg,image/png" multiple class="p-3 border rounded-lg">
+                <div id="image-preview" class="flex flex-wrap"></div>
                 <div id="error-message" class="text-center hidden"></div>
                 <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">创建菜品</button>
                 <button type="button" onclick="location.href='/menu-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回菜单管理</button>
