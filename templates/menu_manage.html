@@ -43,7 +43,7 @@
                     showMessage('error-message', result.error || '加载菜品列表失败！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
 
@@ -58,7 +58,7 @@
                     showMessage('error-message', result.error || '删除菜品失败，请重试！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '删除菜品失败，请稍后重试！');
             }
         }
     </script>

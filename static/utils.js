@@ -21,8 +21,8 @@ async function checkAuth(redirectTo, requiredRole = null) {
         return null;
     }
     if (requiredRole && role !== requiredRole) {
-        alert('需要管理员权限！');
-        location.href = redirectTo;
+        showMessage('error-message', '需要管理员权限！');
+        setTimeout(() => location.href = redirectTo, 1000);
         return null;
     }
     return { userId, role };
@@ -36,7 +36,12 @@ function showMessage(elementId, message, isError = true) {
         errorDiv.classList.remove('hidden');
         errorDiv.classList.toggle('text-red-600', isError);
         errorDiv.classList.toggle('text-green-600', !isError);
+        // 自动隐藏消息
+        setTimeout(() => {
+            errorDiv.classList.add('hidden');
+            errorDiv.textContent = '';
+        }, 3000);
     } else {
-        alert(message);
+        console.error('消息显示失败：未找到元素', elementId);
     }
 }
