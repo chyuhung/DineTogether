@@ -43,7 +43,7 @@
                     showMessage('error-message', result.error || '加载 Party 列表失败！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
 
@@ -58,7 +58,7 @@
                     showMessage('error-message', result.error || '删除 Party 失败，请重试！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
     </script>

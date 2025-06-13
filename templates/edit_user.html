@@ -37,7 +37,7 @@
                     showMessage('error-message', result.error || '加载用户失败！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
 
@@ -61,7 +61,7 @@
                     showMessage('error-message', result.error || '更新用户失败，请重试！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
     </script>

@@ -23,6 +23,7 @@
         window.onload = async function() {
             const user = await checkAuth('/login');
             if (!user) return;
+
             try {
                 const menuResult = await makeRequest('/menus');
                 if (menuResult.message === '获取菜品列表成功') {
@@ -38,24 +39,38 @@
                 }
 
                 const orderResult = await makeRequest('/api/party-orders');
+                const tbody = document.getElementById('order-table').getElementsByTagName('tbody')[0];
                 if (orderResult.message === '获取订单成功') {
-                    const tbody = document.getElementById('order-table').getElementsByTagName('tbody')[0];
-                    orderResult.orders.forEach(order => {
-                        const row = tbody.insertRow();
-                        row.innerHTML = `
-                            <td class="border px-4 py-2">${order.id}</td>
-                            <td class="border px-4 py-2">${order.username}</td>
-                            <td class="border px-4 py-2">${order.menu_name}</td>
-                            <td class="border px-4 py-2">
-                                <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
-                            </td>
-                        `;
-                    });
+                    if (Array.isArray(orderResult.orders)) {
+                        if (orderResult.orders.length === 0) {
+                            const row = tbody.insertRow();
+                            row.innerHTML = `
+                                <td colspan="4" class="border px-4 py-2 text-center">没有订单记录</td>
+                            `;
+                        } else {
+                            orderResult.orders.forEach(order => {
+                                const row = tbody.insertRow();
+                                row.innerHTML = `
+                                    <td class="border px-4 py-2">${order.id}</td>
+                                    <td class="border px-4 py-2">${order.username}</td>
+                                    <td class="border px-4 py-2">${order.menu_name}</td>
+                                    <td class="border px-4 py-2">
+                                        <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                                    </td>
+                                `;
+                            });
+                        }
+                    } else {
+                        showMessage('error-message', '订单数据格式不正确！');
+                    }
+                } else if (orderResult.error === '未加入任何 Party') {
+                    showMessage('error-message', '请先加入 Party！');
+                    setTimeout(() => location.href = '/join-party', 1000);
                 } else {
                     showMessage('error-message', orderResult.error || '加载订单失败！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
 
@@ -75,7 +90,7 @@
                     showMessage('error-message', result.error || '点餐失败，请重试！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
 
@@ -90,7 +105,7 @@
                     showMessage('error-message', result.error || '删除订单失败，请重试！');
                 }
             } catch (error) {
-                alert(error);
+                alert(error.message);
             }
         }
     </script>
