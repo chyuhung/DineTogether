@@ -51,7 +51,7 @@
                         if (orderResult.orders.length === 0) {
                             const row = tbody.insertRow();
                             row.innerHTML = `
-                                <td colspan="4" class="border px-4 py-2 text-center">没有订单记录</td>
+                                <td colspan="5" class="border px-4 py-2 text-center">没有订单记录</td>
                             `;
                         } else {
                             orderResult.orders.forEach(order => {
@@ -62,11 +62,12 @@
                                     <td class="border px-4 py-2">${order.username}</td>
                                     <td class="border px-4 py-2">${menuLink}</td>
                                     <td class="border px-4 py-2">${order.energy_cost}</td>
+                                    <td class="border px-4 py-2">${order.quantity}</td>
                                     <td class="border px-4 py-2">
                                         <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
                                     </td>
                                     <td class="border px-4 py-2">
-                                        <button onclick="deleteOrder(${order.menu_id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                                        <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
                                     </td>
                                 `;
                             });
@@ -137,10 +138,10 @@
             }
         }
 
-        async function deleteOrder(menuId) {
+        async function deleteOrder(orderId) {
             if (!confirm('确定要删除此订单吗？')) return;
             try {
-                const result = await makeRequest(`/order/${menuId}`, 'DELETE');
+                const result = await makeRequest(`/order/${orderId}`, 'DELETE');
                 if (result.message === '订单删除成功') {
                     showMessage('error-message', '订单删除成功！', false);
                     setTimeout(() => location.reload(), 1000);
@@ -180,6 +181,7 @@
                         <th class="border px-4 py-2">用户名</th>
                         <th class="border px-4 py-2">菜品</th>
                         <th class="border px-4 py-2">精力消耗</th>
+                        <th class="border px-4 py-2">数量</th>
                         <th class="border px-4 py-2">图片</th>
                         <th class="border px-4 py-2">操作</th>
                     </tr>
