@@ -6,22 +6,16 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"regexp"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ValidatePassword 验证密码是否符合要求（至少6位，包含字母和数字）
+// ValidatePassword 验证密码是否符合要求（至少6位，其他不做要求）
 func ValidatePassword(password string) error {
 	if len(password) < 6 {
 		return errors.NewAppError(http.StatusBadRequest, "密码长度必须至少6位")
-	}
-	hasLetter, _ := regexp.MatchString("[a-zA-Z]", password)
-	hasNumber, _ := regexp.MatchString("[0-9]", password)
-	if !hasLetter || !hasNumber {
-		return errors.NewAppError(http.StatusBadRequest, "密码必须包含字母和数字")
 	}
 	return nil
 }
