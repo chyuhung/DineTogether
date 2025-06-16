@@ -3,6 +3,7 @@ package handlers
 import (
 	"DineTogether/errors"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -12,9 +13,11 @@ import (
 
 // Order 订单结构体，用于 JSON 响应
 type Order struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	MenuName string `json:"menu_name"`
+	ID        int      `json:"id"`
+	Username  string   `json:"username"`
+	MenuName  string   `json:"menu_name"`
+	MenuID    int      `json:"menu_id"`
+	ImageURLs []string `json:"image_urls"`
 }
 
 // GetPartyOrders 获取当前 Party 的订单
@@ -27,7 +30,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		rows, err := db.Query(`
-			SELECT o.id, u.username, m.name
+			SELECT o.id, u.username, m.name, m.id, m.image_urls
 			FROM orders o
 			JOIN users u ON o.user_id = u.id
 			JOIN menus m ON o.menu_id = m.id
@@ -41,10 +44,20 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 		var orders []Order
 		for rows.Next() {
 			var order Order
-			if err := rows.Scan(&order.ID, &order.Username, &order.MenuName); err != nil {
+			var imageURLs sql.NullString
+			if err := rows.Scan(&order.ID, &order.Username, &order.MenuName, &order.MenuID, &imageURLs); err != nil {
 				log.Printf("扫描订单失败: %v", err)
 				c.Error(errors.ErrInternalServer)
 				return
+			}
+			if imageURLs.Valid {
+				if err := json.Unmarshal([]byte(imageURLs.String), &order.ImageURLs); err != nil {
+					log.Printf("解析 image_urls 失败: %v", err)
+					c.Error(errors.ErrInternalServer)
+					return
+				}
+			} else {
+				order.ImageURLs = []string{}
 			}
 			orders = append(orders, order)
 		}
