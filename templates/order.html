@@ -45,11 +45,13 @@
                 const orderResult = await makeRequest('/api/party-orders');
                 const tbody = document.getElementById('order-table').getElementsByTagName('tbody')[0];
                 if (orderResult.message === '获取订单成功') {
+                    // 显示 Party 剩余精力值
+                    document.getElementById('energy-left').textContent = `当前 Party 剩余精力: ${orderResult.energy_left}`;
                     if (Array.isArray(orderResult.orders)) {
                         if (orderResult.orders.length === 0) {
                             const row = tbody.insertRow();
                             row.innerHTML = `
-                                <td colspan="5" class="border px-4 py-2 text-center">没有订单记录</td>
+                                <td colspan="4" class="border px-4 py-2 text-center">没有订单记录</td>
                             `;
                         } else {
                             orderResult.orders.forEach(order => {
@@ -57,14 +59,14 @@
                                 const menuLink = order.menu_id ? `<a href="javascript:void(0)" onclick="viewMenuDetail(${order.menu_id})" class="text-blue-600 hover:underline">${order.menu_name}</a>` : order.menu_name;
                                 const row = tbody.insertRow();
                                 row.innerHTML = `
-                                    <td class="border px-4 py-2">${order.id}</td>
                                     <td class="border px-4 py-2">${order.username}</td>
                                     <td class="border px-4 py-2">${menuLink}</td>
+                                    <td class="border px-4 py-2">${order.energy_cost}</td>
                                     <td class="border px-4 py-2">
                                         <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
                                     </td>
                                     <td class="border px-4 py-2">
-                                        <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                                        <button onclick="deleteOrder(${order.menu_id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
                                     </td>
                                 `;
                             });
@@ -135,10 +137,10 @@
             }
         }
 
-        async function deleteOrder(orderId) {
+        async function deleteOrder(menuId) {
             if (!confirm('确定要删除此订单吗？')) return;
             try {
-                const result = await makeRequest(`/order/${orderId}`, 'DELETE');
+                const result = await makeRequest(`/order/${menuId}`, 'DELETE');
                 if (result.message === '订单删除成功') {
                     showMessage('error-message', '订单删除成功！', false);
                     setTimeout(() => location.reload(), 1000);
@@ -164,6 +166,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">点餐</h1>
             <div id="error-message" class="text-center hidden mb-4"></div>
+            <p id="energy-left" class="text-center text-lg font-semibold mb-4"></p>
             <form id="form" class="flex flex-col space-y-4 mb-6" onsubmit="placeOrder(event)">
                 <select id="menu_id" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
                     <option value="">选择菜品</option>
@@ -174,9 +177,9 @@
             <table id="order-table" class="min-w-full bg-white border">
                 <thead>
                     <tr>
-                        <th class="border px-4 py-2">订单 ID</th>
                         <th class="border px-4 py-2">用户名</th>
                         <th class="border px-4 py-2">菜品</th>
+                        <th class="border px-4 py-2">精力消耗</th>
                         <th class="border px-4 py-2">图片</th>
                         <th class="border px-4 py-2">操作</th>
                     </tr>
