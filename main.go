@@ -109,6 +109,9 @@ func main() {
 		session.Save()
 		c.JSON(http.StatusOK, gin.H{"hasParty": true, "party_id": partyID, "party_name": partyName})
 	})
+	r.GET("/change-password", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "change_password.html", nil)
+	})
 	r.POST("/change-password", handlers.ChangePassword(db))
 	r.GET("/join-party", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "join_party.html", nil)
@@ -122,7 +125,7 @@ func main() {
 	r.GET("/api/party-orders", handlers.GetPartyOrders(db))
 	r.DELETE("/order/:id", handlers.DeleteOrder(db))
 
-	// 管理员页面路由（移除 /admin 分组，使用 AuthMiddleware 控制权限）
+	// 管理员页面路由
 	r.GET("/menu-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "menu_manage.html", nil)
 	})
@@ -156,7 +159,7 @@ func main() {
 		c.HTML(http.StatusOK, "menu_detail.html", nil)
 	})
 
-	// API 路由（保持不变）
+	// API 路由
 	r.GET("/menus", handlers.GetMenus(db))
 	r.POST("/menus", handlers.AuthMiddleware(db), handlers.CreateMenu(db))
 	r.GET("/menu/:id", handlers.GetMenu(db))
