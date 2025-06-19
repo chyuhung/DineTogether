@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,17 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// 配置 CORS 中间件
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // 允许的前端地址
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,         // 允许携带凭证（如 Cookie）
+		MaxAge:           12 * 60 * 60, // 预检请求缓存时间（12小时）
+	}))
+
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
 	store := cookie.NewStore([]byte(secret))

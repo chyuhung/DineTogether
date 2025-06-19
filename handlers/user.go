@@ -196,7 +196,7 @@ func ChangePassword(db *sql.DB) gin.HandlerFunc {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		if userID == nil {
-			c.Error(errors.ErrUnauthorized)
+			c.Error(errors.NewAppError(http.StatusUnauthorized, "用户未登录"))
 			return
 		}
 		var request struct {
@@ -204,7 +204,7 @@ func ChangePassword(db *sql.DB) gin.HandlerFunc {
 			NewPassword string `json:"new_password"`
 		}
 		if err := c.ShouldBindJSON(&request); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的请求数据"))
 			return
 		}
 		if request.OldPassword == "" || request.NewPassword == "" {
@@ -219,12 +219,12 @@ func ChangePassword(db *sql.DB) gin.HandlerFunc {
 		row := db.QueryRow("SELECT password FROM users WHERE id = ?", userID)
 		if err := row.Scan(&currentPassword); err != nil {
 			log.Printf("用户 %v 不存在: %v", userID, err)
-			c.Error(errors.ErrNotFound)
+			c.Error(errors.NewAppError(http.StatusNotFound, "用户不存在"))
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(currentPassword), []byte(request.OldPassword)); err != nil {
 			log.Printf("用户 %v 旧密码错误", userID)
-			c.Error(errors.ErrUnauthorized)
+			c.Error(errors.NewAppError(http.StatusUnauthorized, "旧密码错误"))
 			return
 		}
 		hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(request.NewPassword), bcrypt.DefaultCost)
@@ -241,7 +241,7 @@ func ChangePassword(db *sql.DB) gin.HandlerFunc {
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
-			c.Error(errors.ErrNotFound)
+			c.Error(errors.NewAppError(http.StatusNotFound, "用户不存在"))
 			return
 		}
 		log.Printf("用户 %v 修改密码成功", userID)

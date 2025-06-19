@@ -8,8 +8,27 @@ async function makeRequest(url, method = 'GET', body = null) {
     if (body) {
         options.body = JSON.stringify(body);
     }
-    const response = await fetch(url, options);
-    return await response.json();
+    try {
+        const response = await fetch(url, options);
+        // 检查响应是否可解析为 JSON
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+            let errorMessage = '请求失败，请稍后重试';
+            if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                errorMessage = result.error || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+        // 成功响应必须是 JSON
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            throw new Error('服务器返回了非 JSON 响应');
+        }
+    } catch (error) {
+        throw new Error(error.message || '网络错误，请稍后重试');
+    }
 }
 
 // 上传图片
@@ -19,23 +38,44 @@ async function uploadImages(files) {
     for (const file of files) {
         formData.append('images', file);
     }
-    const response = await fetch('/upload-image', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-    });
-    const result = await response.json();
-    if (result.message === '图片上传成功') {
-        return result.image_urls;
+    try {
+        const response = await fetch('/upload-image', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+        });
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+            let errorMessage = '图片上传失败';
+            if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                errorMessage = result.error || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+        if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+            if (result.message === '图片上传成功') {
+                return result.image_urls;
+            }
+            throw new Error(result.error || '图片上传失败');
+        } else {
+            throw new Error('服务器返回了非 JSON 响应');
+        }
+    } catch (error) {
+        throw new Error(error.message || '图片上传失败');
     }
-    throw new Error(result.error || '图片上传失败');
 }
 
 // 删除图片
 async function deleteImage(imageUrl) {
-    const result = await makeRequest('/delete-image', 'POST', { image_url: imageUrl });
-    if (result.message !== '图片删除成功') {
-        throw new Error(result.error || '图片删除失败');
+    try {
+        const result = await makeRequest('/delete-image', 'POST', { image_url: imageUrl });
+        if (result.message !== '图片删除成功') {
+            throw new Error(result.error || '图片删除失败');
+        }
+    } catch (error) {
+        throw new Error(error.message || '图片删除失败');
     }
 }
 

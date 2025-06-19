@@ -25,7 +25,7 @@ func Register(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的请求数据"))
 			return
 		}
 		if user.Username == "" || user.Password == "" {
@@ -66,7 +66,7 @@ func Login(db *sql.DB) gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&loginRequest); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的请求数据"))
 			return
 		}
 		if loginRequest.Username == "" || loginRequest.Password == "" {
@@ -77,12 +77,12 @@ func Login(db *sql.DB) gin.HandlerFunc {
 		row := db.QueryRow("SELECT id, username, password, role FROM users WHERE username = ?", loginRequest.Username)
 		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Role); err != nil {
 			log.Printf("用户 %s 不存在: %v", loginRequest.Username, err)
-			c.Error(errors.ErrUnauthorized)
+			c.Error(errors.NewAppError(http.StatusUnauthorized, "用户名或密码错误"))
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
 			log.Printf("用户 %s 密码错误", loginRequest.Username)
-			c.Error(errors.ErrUnauthorized)
+			c.Error(errors.NewAppError(http.StatusUnauthorized, "用户名或密码错误"))
 			return
 		}
 		session := sessions.Default(c)
