@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"DineTogether/errors"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,20 +15,12 @@ func ErrorHandler() gin.HandlerFunc {
 			// 确保响应头为 application/json
 			c.Header("Content-Type", "application/json")
 			err := c.Errors.Last()
-			if appErr, ok := err.Err.(*errors.AppError); ok {
-				// 返回标准化的错误响应
-				c.JSON(appErr.Code, gin.H{
-					"error":   appErr.Message,
-					"success": false,
-				})
-			} else {
-				log.Printf("未处理的错误: %v", err)
-				// 返回通用服务器错误
-				c.JSON(errors.ErrInternalServer.Code, gin.H{
-					"error":   errors.ErrInternalServer.Message,
-					"success": false,
-				})
-			}
+			log.Printf("未处理的错误: %v", err)
+			// 返回通用服务器错误
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "服务器错误",
+				"success": false,
+			})
 			// 清空错误，防止重复处理
 			c.Errors = nil
 			// 终止后续处理

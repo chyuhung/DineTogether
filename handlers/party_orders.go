@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"DineTogether/errors"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -28,7 +27,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 		session := sessions.Default(c)
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未加入任何 Party", "success": false})
 			return
 		}
 		// 获取 Party 的剩余精力值
@@ -36,7 +35,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 		row := db.QueryRow("SELECT energy_left FROM parties WHERE id = ?", partyID)
 		if err := row.Scan(&energyLeft); err != nil {
 			log.Printf("获取 Party %v 剩余精力失败: %v", partyID, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		rows, err := db.Query(`
@@ -48,7 +47,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 			GROUP BY u.id, m.id`, partyID)
 		if err != nil {
 			log.Printf("获取 Party %v 订单失败: %v", partyID, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		defer rows.Close()
@@ -58,13 +57,13 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 			var imageURLs sql.NullString
 			if err := rows.Scan(&order.ID, &order.Username, &order.MenuName, &order.MenuID, &imageURLs, &order.EnergyCost, &order.Quantity); err != nil {
 				log.Printf("扫描订单失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			if imageURLs.Valid {
 				if err := json.Unmarshal([]byte(imageURLs.String), &order.ImageURLs); err != nil {
 					log.Printf("解析 image_urls 失败: %v", err)
-					c.Error(errors.ErrInternalServer)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 					return
 				}
 			} else {

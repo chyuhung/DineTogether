@@ -41,12 +41,12 @@ func main() {
 
 	// 配置 CORS 中间件
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // 允许的前端地址
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,         // 允许携带凭证（如 Cookie）
-		MaxAge:           12 * 60 * 60, // 预检请求缓存时间（12小时）
+		AllowCredentials: true,
+		MaxAge:           12 * 60 * 60,
 	}))
 
 	r.LoadHTMLGlob("templates/*")
@@ -91,7 +91,7 @@ func main() {
 				return
 			}
 			log.Printf("查询用户 Party 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败", "success": false})
 			return
 		}
 		session.Set("party_id", partyID)
@@ -114,7 +114,7 @@ func main() {
 				return
 			}
 			log.Printf("查询用户 Party 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败", "success": false})
 			return
 		}
 		session.Set("party_id", partyID)

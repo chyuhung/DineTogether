@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"DineTogether/errors"
 	"fmt"
 	"io"
 	"log"
@@ -21,33 +20,33 @@ func UploadImage() gin.HandlerFunc {
 		const maxFileSize = 2 << 20 // 2MB
 		form, err := c.MultipartForm()
 		if err != nil {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "无法解析表单数据"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无法解析表单数据", "success": false})
 			return
 		}
 		files := form.File["images"]
 		if len(files) == 0 {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "未上传任何图片"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未上传任何图片", "success": false})
 			return
 		}
 		if len(files) > maxImages {
-			c.Error(errors.NewAppError(http.StatusBadRequest, fmt.Sprintf("最多上传 %d 张图片", maxImages)))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("最多上传 %d 张图片", maxImages), "success": false})
 			return
 		}
 		var imageURLs []string
 		uploadDir := "static/uploads"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
 			log.Printf("创建上传目录失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		for _, file := range files {
 			if file.Size > maxFileSize {
-				c.Error(errors.NewAppError(http.StatusBadRequest, fmt.Sprintf("图片 %s 超过2MB限制", file.Filename)))
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("图片 %s 超过2MB限制", file.Filename), "success": false})
 				return
 			}
 			ext := strings.ToLower(filepath.Ext(file.Filename))
 			if ext != ".jpg" && ext != ".png" {
-				c.Error(errors.NewAppError(http.StatusBadRequest, fmt.Sprintf("图片 %s 格式不支持，仅支持 jpg/png", file.Filename)))
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("图片 %s 格式不支持，仅支持 jpg/png", file.Filename), "success": false})
 				return
 			}
 			filename := fmt.Sprintf("%d-%s%s", time.Now().UnixNano(), strings.TrimSuffix(file.Filename, ext), ext)
@@ -55,20 +54,20 @@ func UploadImage() gin.HandlerFunc {
 			src, err := file.Open()
 			if err != nil {
 				log.Printf("打开上传文件失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			defer src.Close()
 			dst, err := os.Create(dstPath)
 			if err != nil {
 				log.Printf("创建目标文件失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			defer dst.Close()
 			if _, err := io.Copy(dst, src); err != nil {
 				log.Printf("保存文件失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			imageURLs = append(imageURLs, fmt.Sprintf("/static/uploads/%s", filename))
@@ -84,21 +83,21 @@ func DeleteImage() gin.HandlerFunc {
 			ImageURL string `json:"image_url"`
 		}
 		if err := c.ShouldBindJSON(&request); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		if !strings.HasPrefix(request.ImageURL, "/static/uploads/") {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的图片路径"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的图片路径", "success": false})
 			return
 		}
 		filename := strings.TrimPrefix(request.ImageURL, "/")
 		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			c.Error(errors.NewAppError(http.StatusNotFound, "图片不存在"))
+			c.JSON(http.StatusNotFound, gin.H{"error": "图片不存在", "success": false})
 			return
 		}
 		if err := os.Remove(filename); err != nil {
 			log.Printf("删除图片 %s 失败: %v", filename, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "图片删除成功"})

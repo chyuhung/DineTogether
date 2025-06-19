@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"DineTogether/errors"
 	"DineTogether/models"
 	"database/sql"
 	"encoding/json"
@@ -18,7 +17,7 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
 		rows, err := db.Query("SELECT id, name, description, energy_cost, image_urls FROM menus")
 		if err != nil {
 			log.Printf("查询菜品失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		defer rows.Close()
@@ -28,14 +27,14 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
 			var description, imageURLs sql.NullString
 			if err := rows.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost, &imageURLs); err != nil {
 				log.Printf("扫描菜品失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			menu.Description = description.String
 			if imageURLs.Valid {
 				if err := json.Unmarshal([]byte(imageURLs.String), &menu.ImageURLs); err != nil {
 					log.Printf("解析 image_urls 失败: %v", err)
-					c.Error(errors.ErrInternalServer)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 					return
 				}
 			} else {
@@ -52,23 +51,23 @@ func CreateMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var menu models.Menu
 		if err := c.ShouldBindJSON(&menu); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		if menu.Name == "" || menu.EnergyCost <= 0 {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "菜品名称和精力消耗不能为空且精力消耗必须大于0"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和精力消耗不能为空且精力消耗必须大于0", "success": false})
 			return
 		}
 		imageURLsJSON, err := json.Marshal(menu.ImageURLs)
 		if err != nil {
 			log.Printf("序列化 image_urls 失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		result, err := db.Exec("INSERT INTO menus (name, description, energy_cost, image_urls) VALUES (?, ?, ?, ?)", menu.Name, menu.Description, menu.EnergyCost, string(imageURLsJSON))
 		if err != nil {
 			log.Printf("创建菜品失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		id, _ := result.LastInsertId()
@@ -81,12 +80,12 @@ func GetMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		if idStr == "undefined" || idStr == "" {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的菜品 ID"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的菜品 ID", "success": false})
 			return
 		}
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		var menu models.Menu
@@ -94,10 +93,10 @@ func GetMenu(db *sql.DB) gin.HandlerFunc {
 		row := db.QueryRow("SELECT id, name, description, energy_cost, image_urls FROM menus WHERE id = ?", id)
 		if err := row.Scan(&menu.ID, &menu.Name, &description, &menu.EnergyCost, &imageURLs); err != nil {
 			if err == sql.ErrNoRows {
-				c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
+				c.JSON(http.StatusNotFound, gin.H{"error": "菜品不存在", "success": false})
 			} else {
 				log.Printf("查询菜品失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			}
 			return
 		}
@@ -105,7 +104,7 @@ func GetMenu(db *sql.DB) gin.HandlerFunc {
 		if imageURLs.Valid {
 			if err := json.Unmarshal([]byte(imageURLs.String), &menu.ImageURLs); err != nil {
 				log.Printf("解析 image_urls 失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 		} else {
@@ -120,33 +119,33 @@ func UpdateMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		var menu models.Menu
 		if err := c.ShouldBindJSON(&menu); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		if menu.Name == "" || menu.EnergyCost <= 0 {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "菜品名称和精力消耗不能为空且精力消耗必须大于0"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "菜品名称和精力消耗不能为空且精力消耗必须大于0", "success": false})
 			return
 		}
 		imageURLsJSON, err := json.Marshal(menu.ImageURLs)
 		if err != nil {
 			log.Printf("序列化 image_urls 失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		result, err := db.Exec("UPDATE menus SET name = ?, description = ?, energy_cost = ?, image_urls = ? WHERE id = ?", menu.Name, menu.Description, menu.EnergyCost, string(imageURLsJSON), id)
 		if err != nil {
 			log.Printf("更新菜品失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
-			c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
+			c.JSON(http.StatusNotFound, gin.H{"error": "菜品不存在", "success": false})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "菜品更新成功"})
@@ -158,13 +157,13 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		tx, err := db.Begin()
 		if err != nil {
 			log.Printf("开启事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		// 获取菜品的精力消耗
@@ -173,10 +172,10 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 		if err := row.Scan(&energyCost); err != nil {
 			tx.Rollback()
 			if err == sql.ErrNoRows {
-				c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
+				c.JSON(http.StatusNotFound, gin.H{"error": "菜品不存在", "success": false})
 			} else {
 				log.Printf("查询菜品 %v 失败: %v", id, err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			}
 			return
 		}
@@ -185,7 +184,7 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 		if err != nil {
 			tx.Rollback()
 			log.Printf("查询订单失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		defer rows.Close()
@@ -195,7 +194,7 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 			if err := rows.Scan(&partyID); err != nil {
 				tx.Rollback()
 				log.Printf("扫描订单失败: %v", err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 			partyEnergyUpdates[partyID] += energyCost
@@ -206,7 +205,7 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 			if err != nil {
 				tx.Rollback()
 				log.Printf("恢复 Party %v 精力失败: %v", partyID, err)
-				c.Error(errors.ErrInternalServer)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 				return
 			}
 		}
@@ -215,7 +214,7 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 		if err != nil {
 			tx.Rollback()
 			log.Printf("删除订单引用失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		// 删除菜品
@@ -223,18 +222,18 @@ func DeleteMenu(db *sql.DB) gin.HandlerFunc {
 		if err != nil {
 			tx.Rollback()
 			log.Printf("删除菜品 %v 失败: %v", id, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
 			tx.Rollback()
-			c.Error(errors.NewAppError(http.StatusNotFound, "菜品不存在"))
+			c.JSON(http.StatusNotFound, gin.H{"error": "菜品不存在", "success": false})
 			return
 		}
 		if err := tx.Commit(); err != nil {
 			log.Printf("提交事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		log.Printf("菜品 %v 删除成功，已恢复相关 Party 精力", id)

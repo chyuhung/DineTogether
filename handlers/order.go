@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"DineTogether/errors"
 	"database/sql"
 	"log"
 	"net/http"
@@ -18,61 +17,61 @@ func PlaceOrder(db *sql.DB) gin.HandlerFunc {
 		userID := session.Get("user_id")
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未加入任何 Party", "success": false})
 			return
 		}
 		var order struct {
 			MenuID int `json:"menu_id"`
 		}
 		if err := c.ShouldBindJSON(&order); err != nil {
-			c.Error(errors.ErrBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
 		if order.MenuID <= 0 {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的菜品 ID"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的菜品 ID", "success": false})
 			return
 		}
 		var energyCost int
 		row := db.QueryRow("SELECT energy_cost FROM menus WHERE id = ?", order.MenuID)
 		if err := row.Scan(&energyCost); err != nil {
 			log.Printf("菜品 %v 不存在: %v", order.MenuID, err)
-			c.Error(errors.ErrNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "资源未找到", "success": false})
 			return
 		}
 		var energyLeft int
 		row = db.QueryRow("SELECT energy_left FROM parties WHERE id = ?", partyID)
 		if err := row.Scan(&energyLeft); err != nil {
 			log.Printf("Party %v 不存在: %v", partyID, err)
-			c.Error(errors.ErrNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "资源未找到", "success": false})
 			return
 		}
 		if energyLeft < energyCost {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "Party 精力不足"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Party 精力不足", "success": false})
 			return
 		}
 		tx, err := db.Begin()
 		if err != nil {
 			log.Printf("开启事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		_, err = tx.Exec("INSERT INTO orders (party_id, user_id, menu_id) VALUES (?, ?, ?)", partyID, userID, order.MenuID)
 		if err != nil {
 			tx.Rollback()
 			log.Printf("点餐失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		_, err = tx.Exec("UPDATE parties SET energy_left = energy_left - ? WHERE id = ?", energyCost, partyID)
 		if err != nil {
 			tx.Rollback()
 			log.Printf("更新 Party %v 精力失败: %v", partyID, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		if err := tx.Commit(); err != nil {
 			log.Printf("提交事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		log.Printf("用户 %v 在 Party %v 点餐 %v 成功", userID, partyID, order.MenuID)
@@ -86,23 +85,23 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		session := sessions.Default(c)
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "未加入任何 Party"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未加入任何 Party", "success": false})
 			return
 		}
 		userID := session.Get("user_id")
 		if userID == nil {
-			c.Error(errors.NewAppError(http.StatusUnauthorized, "用户未登录"))
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未登录", "success": false})
 			return
 		}
 		orderID, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
-			c.Error(errors.NewAppError(http.StatusBadRequest, "无效的订单 ID"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的订单 ID", "success": false})
 			return
 		}
 		tx, err := db.Begin()
 		if err != nil {
 			log.Printf("开启事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		defer tx.Rollback()
@@ -117,11 +116,11 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		if err := row.Scan(&menuID, &energyCost); err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("订单 %v 不存在或无权限: %v", orderID, err)
-				c.Error(errors.NewAppError(http.StatusNotFound, "订单不存在"))
+				c.JSON(http.StatusNotFound, gin.H{"error": "订单不存在", "success": false})
 				return
 			}
 			log.Printf("查询订单失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 
@@ -129,13 +128,13 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		result, err := tx.Exec("DELETE FROM orders WHERE id = ?", orderID)
 		if err != nil {
 			log.Printf("删除订单 %v 失败: %v", orderID, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
 			log.Printf("订单 %v 不存在: %v", orderID, err)
-			c.Error(errors.NewAppError(http.StatusNotFound, "订单不存在"))
+			c.JSON(http.StatusNotFound, gin.H{"error": "订单不存在", "success": false})
 			return
 		}
 
@@ -143,13 +142,13 @@ func DeleteOrder(db *sql.DB) gin.HandlerFunc {
 		_, err = tx.Exec("UPDATE parties SET energy_left = energy_left + ? WHERE id = ?", energyCost, partyID)
 		if err != nil {
 			log.Printf("更新 Party %v 精力值失败: %v", partyID, err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 
 		if err := tx.Commit(); err != nil {
 			log.Printf("提交事务失败: %v", err)
-			c.Error(errors.ErrInternalServer)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}
 
