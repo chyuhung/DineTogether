@@ -187,12 +187,12 @@ func JoinParty(db *sql.DB) gin.HandlerFunc {
 		row := db.QueryRow("SELECT id, name, password, energy_left, is_active FROM parties WHERE name = ? AND is_active = ?", joinRequest.PartyName, true)
 		if err := row.Scan(&party.ID, &party.Name, &party.Password, &party.EnergyLeft, &party.IsActive); err != nil {
 			log.Printf("Party %s 不存在或已关闭: %v", joinRequest.PartyName, err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权", "success": false})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Party 不存在或已关闭", "success": false})
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(party.Password), []byte(joinRequest.Password)); err != nil {
 			log.Printf("Party %s 密码错误", joinRequest.PartyName)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权", "success": false})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Party 密码错误", "success": false})
 			return
 		}
 		session := sessions.Default(c)
