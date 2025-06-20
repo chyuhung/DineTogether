@@ -10,7 +10,6 @@ async function makeRequest(url, method = 'GET', body = null) {
     }
     try {
         const response = await fetch(url, options);
-        // 检查响应是否可解析为 JSON
         const contentType = response.headers.get('content-type');
         if (!response.ok) {
             let errorMessage = '请求失败，请稍后重试';
@@ -20,7 +19,6 @@ async function makeRequest(url, method = 'GET', body = null) {
             }
             throw new Error(errorMessage);
         }
-        // 成功响应必须是 JSON
         if (contentType && contentType.includes('application/json')) {
             return await response.json();
         } else {
@@ -82,7 +80,7 @@ async function deleteImage(imageUrl) {
 // 检查身份验证
 async function checkAuth(redirectTo, requiredRole = null) {
     const userId = localStorage.getItem('user_id');
-    const role = localStorage.getItem('role') || 'guest'; // 默认角色为 guest
+    const role = localStorage.getItem('role') || 'guest';
     if (!userId && redirectTo !== '/login') {
         location.href = '/login';
         return null;
