@@ -82,7 +82,7 @@
                 card.innerHTML = `
                     <img src="${imageUrl}" alt="${menu.name}" class="w-32 h-32 object-cover rounded mb-2">
                     <h3 class="text-lg font-semibold">${menu.name}</h3>
-                    <p class="text-gray-600">${menu.description || '无描述'}</p>
+                    <p class="text-gray-600 text-center">${menu.description || '无描述'}</p>
                     <p class="text-gray-800 font-bold">精力消耗: ${menu.energy_cost}</p>
                     <button onclick="placeOrder(${menu.id})" class="bg-green-600 text-white px-4 py-2 rounded mt-2 btn-hover">添加到订单</button>
                 `;
@@ -140,9 +140,7 @@
         }
 
         function updateOrderPagination() {
-           
-
- const pagination = document.getElementById('order-pagination');
+            const pagination = document.getElementById('order-pagination');
             pagination.innerHTML = '';
             for (let i = 1; i <= totalOrderPages; i++) {
                 const button = document.createElement('button');
@@ -205,7 +203,6 @@
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">点餐</h1>
             <div id="error-message" class="text-center hidden mb-4"></div>
             <p id="energy-left" class="text-center text-lg font-semibold mb-6"></p>
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">可用菜品</h2>
             <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"></div>
             <div id="menu-pagination" class="flex justify-center mb-6"></div>
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">当前订单</h2>
