@@ -52,13 +52,15 @@
             menusToShow.forEach(menu => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td class="border px-4 py-2">${menu.name}</td>
-                    <td class="border px-4 py-2">${menu.energy_cost}</td>
-                    <td class="border px-4 py-2">${menu.image_urls.length}</td>
-                    <td class="border px-4 py-2">
-                        <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
-                        <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
-                        <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                    <td class="border px-4 py-2 text-center">${menu.name}</td>
+                    <td class="border px-4 py-2 text-center">${menu.energy_cost}</td>
+                    <td class="border px-4 py-2 text-center">${menu.image_urls.length}</td>
+                    <td class="border px-4 py-2 text-center">
+                        <div class="flex justify-center space-x-2">
+                            <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
+                            <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
+                            <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                        </div>
                     </td>
                 `;
             });
@@ -117,10 +119,10 @@
             <table id="menu-table" class="min-w-full bg-white border">
                 <thead>
                     <tr>
-                        <th class="border px-4 py-2">名称</th>
-                        <th class="border px-4 py-2">精力消耗</th>
-                        <th class="border px-4 py-2">图片数量</th>
-                        <th class="border px-4 py-2">操作</th>
+                        <th class="border px-4 py-2 text-center">名称</th>
+                        <th class="border px-4 py-2 text-center">精力消耗</th>
+                        <th class="border px-4 py-2 text-center">图片数量</th>
+                        <th class="border px-4 py-2 text-center">操作</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
