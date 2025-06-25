@@ -26,6 +26,14 @@
         }
     </style>
     <script>
+        const ITEMS_PER_PAGE = 8; // 每页显示的菜品数量
+        let currentMenuPage = 1;
+        let currentOrderPage = 1;
+        let totalMenuPages = 1;
+        let totalOrderPages = 1;
+        let allMenus = [];
+        let allOrders = [];
+
         window.onload = async function() {
             const user = await checkAuth('/login');
             if (!user) return;
@@ -33,20 +41,10 @@
             try {
                 const menuResult = await makeRequest('/menus');
                 if (menuResult.message === '获取菜品列表成功') {
-                    const menuContainer = document.getElementById('menu-container');
-                    menuResult.menus.forEach(menu => {
-                        const imageUrl = menu.image_urls && menu.image_urls[0] ? menu.image_urls[0] : '/static/placeholder.jpg';
-                        const card = document.createElement('div');
-                        card.className = 'bg-white rounded-lg shadow-md p-4 flex flex-col items-center menu-card';
-                        card.innerHTML = `
-                            <img src="${imageUrl}" alt="${menu.name}" class="w-32 h-32 object-cover rounded mb-2">
-                            <h3 class="text-lg font-semibold">${menu.name}</h3>
-                            <p class="text-gray-600">${menu.description || '无描述'}</p>
-                            <p class="text-gray-800 font-bold">精力消耗: ${menu.energy_cost}</p>
-                            <button onclick="placeOrder(${menu.id})" class="bg-green-600 text-white px-4 py-2 rounded mt-2 btn-hover">添加到订单</button>
-                        `;
-                        menuContainer.appendChild(card);
-                    });
+                    allMenus = menuResult.menus;
+                    totalMenuPages = Math.ceil(allMenus.length / ITEMS_PER_PAGE);
+                    renderMenus(currentMenuPage);
+                    updateMenuPagination();
                 } else {
                     showMessage('error-message', menuResult.error || '加载菜品失败！');
                 }
@@ -55,34 +53,10 @@
                 const tbody = document.getElementById('order-table').getElementsByTagName('tbody')[0];
                 if (orderResult.message === '获取订单成功') {
                     document.getElementById('energy-left').textContent = `当前 Party 剩余精力: ${orderResult.energy_left}`;
-                    if (Array.isArray(orderResult.orders)) {
-                        if (orderResult.orders.length === 0) {
-                            const row = tbody.insertRow();
-                            row.innerHTML = `
-                                <td colspan="5" class="border px-4 py-2 text-center">没有订单记录</td>
-                            `;
-                        } else {
-                            orderResult.orders.forEach(order => {
-                                const imageUrl = order.image_urls && order.image_urls[0] ? order.image_urls[0] : '/static/placeholder.jpg';
-                                const menuLink = order.menu_id ? `<a href="javascript:void(0)" onclick="viewMenuDetail(${order.menu_id})" class="text-blue-600 hover:underline">${order.menu_name}</a>` : order.menu_name;
-                                const row = tbody.insertRow();
-                                row.innerHTML = `
-                                    <td class="border px-4 py-2">${order.username}</td>
-                                    <td class="border px-4 py-2">${menuLink}</td>
-                                    <td class="border px-4 py-2">${order.energy_cost}</td>
-                                    <td class="border px-4 py-2">${order.quantity}</td>
-                                    <td class="border px-4 py-2">
-                                        <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
-                                    </td>
-                                    <td class="border px-4 py-2">
-                                        <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
-                                    </td>
-                                `;
-                            });
-                        }
-                    } else {
-                        showMessage('error-message', '订单数据格式不正确！');
-                    }
+                    allOrders = Array.isArray(orderResult.orders) ? orderResult.orders : [];
+                    totalOrderPages = Math.ceil(allOrders.length / ITEMS_PER_PAGE);
+                    renderOrders(currentOrderPage);
+                    updateOrderPagination();
                 } else if (orderResult.error === '未加入任何 Party') {
                     showMessage('error-message', '请先加入 Party！');
                     setTimeout(() => location.href = '/join-party', 1000);
@@ -91,6 +65,95 @@
                 }
             } catch (error) {
                 showMessage('error-message', error.message || '网络错误，请稍后重试！');
+            }
+        }
+
+        function renderMenus(page) {
+            const menuContainer = document.getElementById('menu-container');
+            menuContainer.innerHTML = '';
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const menusToShow = allMenus.slice(start, end);
+
+            menusToShow.forEach(menu => {
+                const imageUrl = menu.image_urls && menu.image_urls[0] ? menu.image_urls[0] : '/static/placeholder.jpg';
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow-md p-4 flex flex-col items-center menu-card';
+                card.innerHTML = `
+                    <img src="${imageUrl}" alt="${menu.name}" class="w-32 h-32 object-cover rounded mb-2">
+                    <h3 class="text-lg font-semibold">${menu.name}</h3>
+                    <p class="text-gray-600">${menu.description || '无描述'}</p>
+                    <p class="text-gray-800 font-bold">精力消耗: ${menu.energy_cost}</p>
+                    <button onclick="placeOrder(${menu.id})" class="bg-green-600 text-white px-4 py-2 rounded mt-2 btn-hover">添加到订单</button>
+                `;
+                menuContainer.appendChild(card);
+            });
+        }
+
+        function renderOrders(page) {
+            const tbody = document.getElementById('order-table').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const ordersToShow = allOrders.slice(start, end);
+
+            if (ordersToShow.length === 0) {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td colspan="6" class="border px-4 py-2 text-center">没有订单记录</td>
+                `;
+            } else {
+                ordersToShow.forEach(order => {
+                    const imageUrl = order.image_urls && order.image_urls[0] ? order.image_urls[0] : '/static/placeholder.jpg';
+                    const menuLink = order.menu_id ? `<a href="javascript:void(0)" onclick="viewMenuDetail(${order.menu_id})" class="text-blue-600 hover:underline">${order.menu_name}</a>` : order.menu_name;
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td class="border px-4 py-2">${order.username}</td>
+                        <td class="border px-4 py-2">${menuLink}</td>
+                        <td class="border px-4 py-2">${order.energy_cost}</td>
+                        <td class="border px-4 py-2">${order.quantity}</td>
+                        <td class="border px-4 py-2">
+                            <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
+                        </td>
+                        <td class="border px-4 py-2">
+                            <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                        </td>
+                    `;
+                });
+            }
+        }
+
+        function updateMenuPagination() {
+            const pagination = document.getElementById('menu-pagination');
+            pagination.innerHTML = '';
+            for (let i = 1; i <= totalMenuPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.className = `px-3 py-1 mx-1 rounded ${i === currentMenuPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.onclick = () => {
+                    currentMenuPage = i;
+                    renderMenus(currentMenuPage);
+                    updateMenuPagination();
+                };
+                pagination.appendChild(button);
+            }
+        }
+
+        function updateOrderPagination() {
+           
+
+ const pagination = document.getElementById('order-pagination');
+            pagination.innerHTML = '';
+            for (let i = 1; i <= totalOrderPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.className = `px-3 py-1 mx-1 rounded ${i === currentOrderPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.onclick = () => {
+                    currentOrderPage = i;
+                    renderOrders(currentOrderPage);
+                    updateOrderPagination();
+                };
+                pagination.appendChild(button);
             }
         }
 
@@ -144,6 +207,7 @@
             <p id="energy-left" class="text-center text-lg font-semibold mb-6"></p>
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">可用菜品</h2>
             <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"></div>
+            <div id="menu-pagination" class="flex justify-center mb-6"></div>
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">当前订单</h2>
             <table id="order-table" class="min-w-full bg-white border">
                 <thead>
@@ -158,6 +222,7 @@
                 </thead>
                 <tbody></tbody>
             </table>
+            <div id="order-pagination" class="flex justify-center mt-4 mb-6"></div>
             <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
         </div>
     </div>

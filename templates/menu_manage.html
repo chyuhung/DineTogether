@@ -20,32 +20,65 @@
         }
     </style>
     <script>
+        const ITEMS_PER_PAGE = 10; // 每页显示的菜品数量
+        let currentPage = 1;
+        let totalPages = 1;
+        let allMenus = [];
+
         window.onload = async function() {
             if (!await checkAuth('/login', 'admin')) return;
             try {
                 const result = await makeRequest('/menus');
                 if (result.message === '获取菜品列表成功') {
-                    const tbody = document.getElementById('menu-table').getElementsByTagName('tbody')[0];
-                    result.menus.forEach(menu => {
-                        const row = tbody.insertRow();
-                        row.innerHTML = `
-                            <td class="border px-4 py-2">${menu.id}</td>
-                            <td class="border px-4 py-2">${menu.name}</td>
-                            <td class="border px-4 py-2">${menu.description || ''}</td>
-                            <td class="border px-4 py-2">${menu.energy_cost}</td>
-                            <td class="border px-4 py-2">${menu.image_urls.length}</td>
-                            <td class="border px-4 py-2">
-                                <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
-                                <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
-                                <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
-                            </td>
-                        `;
-                    });
+                    allMenus = result.menus;
+                    totalPages = Math.ceil(allMenus.length / ITEMS_PER_PAGE);
+                    renderMenus(currentPage);
+                    updatePagination();
                 } else {
                     showMessage('error-message', result.error || '加载菜品列表失败！');
                 }
             } catch (error) {
                 showMessage('error-message', error.message || '网络错误，请稍后重试！');
+            }
+        }
+
+        function renderMenus(page) {
+            const tbody = document.getElementById('menu-table').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const menusToShow = allMenus.slice(start, end);
+
+            menusToShow.forEach(menu => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td class="border px-4 py-2">${menu.id}</td>
+                    <td class="border px-4 py-2">${menu.name}</td>
+                    <td class="border px-4 py-2">${menu.description || ''}</td>
+                    <td class="border px-4 py-2">${menu.energy_cost}</td>
+                    <td class="border px-4 py-2">${menu.image_urls.length}</td>
+                    <td class="border px-4 py-2">
+                        <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
+                        <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
+                        <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                    </td>
+                `;
+            });
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.className = `px-3 py-1 mx-1 rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.onclick = () => {
+                    currentPage = i;
+                    renderMenus(currentPage);
+                    updatePagination();
+                };
+                pagination.appendChild(button);
             }
         }
 
@@ -55,7 +88,11 @@
                 const result = await makeRequest(`/menu/${menuId}`, 'DELETE');
                 if (result.message === '菜品删除成功') {
                     showMessage('error-message', '菜品删除成功！', false);
-                    setTimeout(() => location.reload(), 1000);
+                    allMenus = allMenus.filter(menu => menu.id !== menuId);
+                    totalPages = Math.ceil(allMenus.length / ITEMS_PER_PAGE);
+                    currentPage = Math.min(currentPage, totalPages) || 1;
+                    renderMenus(currentPage);
+                    updatePagination();
                 } else {
                     showMessage('error-message', result.error || '删除菜品失败，请重试！');
                 }
@@ -92,6 +129,7 @@
                 </thead>
                 <tbody></tbody>
             </table>
+            <div id="pagination" class="flex justify-center mt-4 mb-6"></div>
             <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
         </div>
     </div>
