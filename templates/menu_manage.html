@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 菜单管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/utils.js"></script>
@@ -14,13 +14,13 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
-        .btn-hover:hover {
-            transform: scale(1.05);
+        .btn-hover:hover, .btn-hover:active {
+            transform: scale(0.95);
             transition: transform 0.2s ease-in-out;
         }
     </style>
     <script>
-        const ITEMS_PER_PAGE = 10; // 每页显示的菜品数量
+        const ITEMS_PER_PAGE = 10;
         let currentPage = 1;
         let totalPages = 1;
         let allMenus = [];
@@ -52,14 +52,14 @@
             menusToShow.forEach(menu => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td class="border px-4 py-2 text-center">${menu.name}</td>
-                    <td class="border px-4 py-2 text-center">${menu.energy_cost}</td>
-                    <td class="border px-4 py-2 text-center">${menu.image_urls.length}</td>
+                    <td class="border px-4 py-2 text-center text-base">${menu.name}</td>
+                    <td class="border px-4 py-2 text-center text-base">${menu.energy_cost}</td>
+                    <td class="border px-4 py-2 text-center text-base">${menu.image_urls.length}</td>
                     <td class="border px-4 py-2 text-center">
-                        <div class="flex justify-center space-x-2">
-                            <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-3 py-1 rounded btn-hover">详情</button>
-                            <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
-                            <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                        <div class="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-2">
+                            <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-4 py-2 rounded btn-hover text-base">详情</button>
+                            <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-4 py-2 rounded btn-hover text-base">编辑</button>
+                            <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-4 py-2 rounded btn-hover text-base">删除</button>
                         </div>
                     </td>
                 `;
@@ -72,7 +72,7 @@
             for (let i = 1; i <= totalPages; i++) {
                 const button = document.createElement('button');
                 button.textContent = i;
-                button.className = `px-3 py-1 mx-1 rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.className = `px-4 py-2 mx-1 rounded text-base ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
                 button.onclick = () => {
                     currentPage = i;
                     renderMenus(currentPage);
@@ -111,24 +111,26 @@
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-4xl">
+    <div class="container mx-auto p-4 max-w-full sm:max-w-4xl">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">菜单管理</h1>
-            <div id="error-message" class="text-center hidden mb-4"></div>
-            <button onclick="location.href='/create-menu'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-4 btn-hover w-full">新建菜品</button>
-            <table id="menu-table" class="min-w-full bg-white border">
-                <thead>
-                    <tr>
-                        <th class="border px-4 py-2 text-center">名称</th>
-                        <th class="border px-4 py-2 text-center">精力消耗</th>
-                        <th class="border px-4 py-2 text-center">图片数量</th>
-                        <th class="border px-4 py-2 text-center">操作</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">菜单管理</h1>
+            <div id="error-message" class="text-center text-base hidden mb-4"></div>
+            <button onclick="location.href='/create-menu'" class="bg-green-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full mb-4">新建菜品</button>
+            <div class="overflow-x-auto">
+                <table id="menu-table" class="min-w-full bg-white border">
+                    <thead>
+                        <tr>
+                            <th class="border px-4 py-2 text-center text-base">名称</th>
+                            <th class="border px-4 py-2 text-center text-base">精力消耗</th>
+                            <th class="border px-4 py-2 text-center text-base">图片数量</th>
+                            <th class="border px-4 py-2 text-center text-base">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div id="pagination" class="flex justify-center mt-4 mb-6"></div>
-            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
+            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full">返回仪表盘</button>
         </div>
     </div>
 </body>

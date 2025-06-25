@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 菜品详情</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/utils.js"></script>
@@ -14,14 +14,13 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
-        .btn-hover:hover {
-            transform: scale(1.05);
+        .btn-hover:hover, .btn-hover:active {
+            transform: scale(0.95);
             transition: transform 0.2s ease-in-out;
         }
     </style>
     <script>
         window.onload = async function() {
-            // 移除严格的管理员权限检查，仅验证登录状态
             const user = await checkAuth('/login');
             const urlParams = new URLSearchParams(window.location.search);
             const menuId = urlParams.get('id');
@@ -42,11 +41,11 @@
                         menu.image_urls.forEach(url => {
                             const img = document.createElement('img');
                             img.src = url;
-                            img.className = 'w-48 h-48 object-cover rounded m-2';
+                            img.className = 'w-full max-w-xs sm:w-48 sm:h-48 object-cover rounded m-2';
                             imageContainer.appendChild(img);
                         });
                     } else {
-                        imageContainer.innerHTML = '<p class="text-gray-500">暂无图片</p>';
+                        imageContainer.innerHTML = '<p class="text-gray-500 text-center text-base">暂无图片</p>';
                     }
                 } else {
                     showMessage('error-message', result.error || '加载菜品失败！');
@@ -60,20 +59,19 @@
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-4xl">
+    <div class="container mx-auto p-4 max-w-full sm:max-w-4xl">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">菜品详情</h1>
-            <div id="error-message" class="text-center hidden mb-4"></div>
-            <div class="space-y-4">
-                <p><strong>名称：</strong><span id="name"></span></p>
-                <p><strong>描述：</strong><span id="description"></span></p>
-                <p><strong>做法：</strong><span id="method"></span></p>
-                <div>
-                    <strong>图片：</strong>
-                    <div id="image-container" class="flex flex-wrap"></div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">菜品详情</h1>
+            <div id="error-message" class="text-center text-base hidden mb-4"></div>
+            <div class="space-y-4 text-base">
+                <p class="text-center"><strong>名称：</strong><span id="name"></span></p>
+                <p class="text-center"><strong>描述：</strong><span id="description"></span></p>
+                <p class="text-center"><strong>做法：</strong><span id="method"></span></p>
+                <div class="text-center">
+                    <div id="image-container" class="flex flex-wrap justify-center"></div>
                 </div>
             </div>
-            <button onclick="history.back()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回</button>
+            <button onclick="history.back()" class="bg-gray-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full mt-4">返回</button>
         </div>
     </div>
 </body>

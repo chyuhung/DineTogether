@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 点餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/utils.js"></script>
@@ -14,8 +14,8 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
-        .btn-hover:hover {
-            transform: scale(1.05);
+        .btn-hover:hover, .btn-hover:active {
+            transform: scale(0.95);
             transition: transform 0.2s ease-in-out;
         }
         .menu-card {
@@ -26,7 +26,7 @@
         }
     </style>
     <script>
-        const ITEMS_PER_PAGE = 8; // 每页显示的菜品数量
+        const ITEMS_PER_PAGE = 8;
         let currentMenuPage = 1;
         let currentOrderPage = 1;
         let totalMenuPages = 1;
@@ -80,11 +80,11 @@
                 const card = document.createElement('div');
                 card.className = 'bg-white rounded-lg shadow-md p-4 flex flex-col items-center menu-card';
                 card.innerHTML = `
-                    <img src="${imageUrl}" alt="${menu.name}" class="w-32 h-32 object-cover rounded mb-2">
-                    <h3 class="text-lg font-semibold">${menu.name}</h3>
-                    <p class="text-gray-600 text-center">${menu.description || '无描述'}</p>
-                    <p class="text-gray-800 font-bold">精力消耗: ${menu.energy_cost}</p>
-                    <button onclick="placeOrder(${menu.id})" class="bg-green-600 text-white px-4 py-2 rounded mt-2 btn-hover">添加到订单</button>
+                    <img src="${imageUrl}" alt="${menu.name}" class="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded mb-2">
+                    <h3 class="text-base sm:text-lg font-semibold text-center">${menu.name}</h3>
+                    <p class="text-gray-600 text-center text-sm sm:text-base">${menu.description || '无描述'}</p>
+                    <p class="text-gray-800 font-bold text-sm sm:text-base">精力消耗: ${menu.energy_cost}</p>
+                    <button onclick="placeOrder(${menu.id})" class="bg-green-600 text-white px-4 py-2 rounded mt-2 btn-hover text-base">添加到订单</button>
                 `;
                 menuContainer.appendChild(card);
             });
@@ -100,7 +100,7 @@
             if (ordersToShow.length === 0) {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td colspan="6" class="border px-4 py-2 text-center">没有订单记录</td>
+                    <td colspan="6" class="border px-4 py-2 text-center text-base">没有订单记录</td>
                 `;
             } else {
                 ordersToShow.forEach(order => {
@@ -108,15 +108,15 @@
                     const menuLink = order.menu_id ? `<a href="javascript:void(0)" onclick="viewMenuDetail(${order.menu_id})" class="text-blue-600 hover:underline">${order.menu_name}</a>` : order.menu_name;
                     const row = tbody.insertRow();
                     row.innerHTML = `
-                        <td class="border px-4 py-2">${order.username}</td>
-                        <td class="border px-4 py-2">${menuLink}</td>
-                        <td class="border px-4 py-2">${order.energy_cost}</td>
-                        <td class="border px-4 py-2">${order.quantity}</td>
-                        <td class="border px-4 py-2">
-                            <img src="${imageUrl}" alt="${order.menu_name}" class="w-16 h-16 object-cover rounded">
+                        <td class="border px-4 py-2 text-center text-base">${order.username}</td>
+                        <td class="border px-4 py-2 text-center text-base">${menuLink}</td>
+                        <td class="border px-4 py-2 text-center text-base">${order.energy_cost}</td>
+                        <td class="border px-4 py-2 text-center text-base">${order.quantity}</td>
+                        <td class="border px-4 py-2 text-center">
+                            <img src="${imageUrl}" alt="${order.menu_name}" class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded">
                         </td>
-                        <td class="border px-4 py-2">
-                            <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                        <td class="border px-4 py-2 text-center">
+                            <button onclick="deleteOrder(${order.id})" class="bg-red-600 text-white px-4 py-2 rounded btn-hover text-base">删除</button>
                         </td>
                     `;
                 });
@@ -129,7 +129,7 @@
             for (let i = 1; i <= totalMenuPages; i++) {
                 const button = document.createElement('button');
                 button.textContent = i;
-                button.className = `px-3 py-1 mx-1 rounded ${i === currentMenuPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.className = `px-4 py-2 mx-1 rounded text-base ${i === currentMenuPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
                 button.onclick = () => {
                     currentMenuPage = i;
                     renderMenus(currentMenuPage);
@@ -145,7 +145,7 @@
             for (let i = 1; i <= totalOrderPages; i++) {
                 const button = document.createElement('button');
                 button.textContent = i;
-                button.className = `px-3 py-1 mx-1 rounded ${i === currentOrderPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.className = `px-4 py-2 mx-1 rounded text-base ${i === currentOrderPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
                 button.onclick = () => {
                     currentOrderPage = i;
                     renderOrders(currentOrderPage);
@@ -198,29 +198,31 @@
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen font-sans">
-    <div class="container mx-auto p-4 max-w-6xl">
+    <div class="container mx-auto p-4 max-w-full sm:max-w-6xl">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">点餐</h1>
-            <div id="error-message" class="text-center hidden mb-4"></div>
-            <p id="energy-left" class="text-center text-lg font-semibold mb-6"></p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">点餐</h1>
+            <div id="error-message" class="text-center text-base hidden mb-4"></div>
+            <p id="energy-left" class="text-center text-base sm:text-lg font-semibold mb-6"></p>
             <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"></div>
             <div id="menu-pagination" class="flex justify-center mb-6"></div>
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">当前订单</h2>
-            <table id="order-table" class="min-w-full bg-white border">
-                <thead>
-                    <tr>
-                        <th class="border px-4 py-2">用户名</th>
-                        <th class="border px-4 py-2">菜品</th>
-                        <th class="border px-4 py-2">精力消耗</th>
-                        <th class="border px-4 py-2">数量</th>
-                        <th class="border px-4 py-2">图片</th>
-                        <th class="border px-4 py-2">操作</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">当前订单</h2>
+            <div class="overflow-x-auto">
+                <table id="order-table" class="min-w-full bg-white border">
+                    <thead>
+                        <tr>
+                            <th class="border px-4 py-2 text-center text-base">用户名</th>
+                            <th class="border px-4 py-2 text-center text-base">菜品</th>
+                            <th class="border px-4 py-2 text-center text-base">精力消耗</th>
+                            <th class="border px-4 py-2 text-center text-base">数量</th>
+                            <th class="border px-4 py-2 text-center text-base">图片</th>
+                            <th class="border px-4 py-2 text-center text-base">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div id="order-pagination" class="flex justify-center mt-4 mb-6"></div>
-            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
+            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full">返回仪表盘</button>
         </div>
     </div>
 </body>

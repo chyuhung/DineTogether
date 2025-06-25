@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 编辑 Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/utils.js"></script>
@@ -14,8 +14,8 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
-        .btn-hover:hover {
-            transform: scale(1.05);
+        .btn-hover:hover, .btn-hover:active {
+            transform: scale(0.95);
             transition: transform 0.2s ease-in-out;
         }
     </style>
@@ -69,20 +69,20 @@
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-md">
+    <div class="container mx-auto p-4 max-w-full sm:max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑 Party</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">编辑 Party</h1>
             <form id="form" class="flex flex-col space-y-4" onsubmit="updateParty(event)">
-                <input id="name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="password" type="password" placeholder="新密码（可选）" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="energy_left" type="number" placeholder="精力值" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <label class="flex items-center space-x-2">
+                <input id="name" type="text" placeholder="Party 名称" class="p-4 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-center">
+                <input id="password" type="password" placeholder="新密码（可选）" class="p-4 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-center">
+                <input id="energy_left" type="number" placeholder="精力值" class="p-4 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-center">
+                <label class="flex items-center justify-center space-x-2">
                     <input id="is_active" type="checkbox" class="h-5 w-5">
-                    <span>是否活跃</span>
+                    <span class="text-base">是否活跃</span>
                 </label>
-                <div id="error-message" class="text-center hidden"></div>
-                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
-                <button type="button" onclick="location.href='/party-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回 Party 管理</button>
+                <div id="error-message" class="text-center text-base hidden"></div>
+                <button type="submit" class="bg-green-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full">保存更改</button>
+                <button type="button" onclick="location.href='/party-manage'" class="bg-gray-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full">返回 Party 管理</button>
             </form>
         </div>
     </div>
