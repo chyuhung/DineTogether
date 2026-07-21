@@ -95,16 +95,36 @@ async function deleteImage(imageUrl) {
 async function checkAuth(redirectTo, requiredRole = null) {
     const userId = localStorage.getItem('user_id');
     const role = localStorage.getItem('role') || 'guest';
-    if (!userId && redirectTo !== '/login') {
-        location.href = '/login';
-        return null;
+
+    if (userId) {
+        try {
+            const resp = await fetch('/api/check-auth', { credentials: 'include' });
+            if (!resp.ok) {
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('role');
+                if (redirectTo) {
+                    location.href = redirectTo;
+                }
+                return null;
+            }
+        } catch {
+            if (redirectTo) {
+                location.href = redirectTo;
+            }
+            return null;
+        }
+        if (requiredRole && role !== requiredRole) {
+            showMessage('error-message', '需要管理员权限！');
+            setTimeout(() => location.href = redirectTo, 1000);
+            return null;
+        }
+        return { userId, role };
     }
-    if (requiredRole && role !== requiredRole) {
-        showMessage('error-message', '需要管理员权限！');
-        setTimeout(() => location.href = redirectTo, 1000);
-        return null;
+
+    if (redirectTo) {
+        location.href = redirectTo;
     }
-    return { userId, role };
+    return null;
 }
 
 function showMessage(elementId, message, isError = true) {

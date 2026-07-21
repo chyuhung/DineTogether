@@ -64,7 +64,7 @@ func main() {
 
 	store := cookie.NewStore([]byte(secret))
 	store.Options(sessions.Options{
-		MaxAge:   86400,
+		MaxAge:   0,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -108,6 +108,24 @@ func main() {
 		c.HTML(http.StatusOK, "menu_detail.html", nil)
 	})
 	r.GET("/api/csrf-token", handlers.GetCSRFToken())
+	r.GET("/api/check-auth", func(c *gin.Context) {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		role := session.Get("role")
+		if userID == nil {
+			c.JSON(401, gin.H{"authenticated": false})
+			return
+		}
+		var exists bool
+		db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)", userID).Scan(&exists)
+		if !exists {
+			session.Clear()
+			session.Save()
+			c.JSON(401, gin.H{"authenticated": false})
+			return
+		}
+		c.JSON(200, gin.H{"authenticated": true, "user_id": userID, "role": role})
+	})
 
 	adminRoutes := r.Group("")
 	adminRoutes.Use(handlers.AuthMiddleware(db))
