@@ -1,4 +1,4 @@
-FROM docker.xuanyuan.me/library/golang:1.24-alpine AS builder
+FROM docker.1ms.run/library/golang:1.24-alpine AS builder
 
 ARG GOPROXY=https://goproxy.cn,https://goproxy.io,direct
 ENV GOPROXY=${GOPROXY}
@@ -12,7 +12,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dinetogether .
 
-FROM docker.xuanyuan.me/library/alpine:3.20
+FROM docker.1ms.run/library/alpine:3.20
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
     apk add --no-cache ca-certificates tzdata
