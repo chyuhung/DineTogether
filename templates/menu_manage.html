@@ -22,7 +22,7 @@
         let allMenus = [];
 
         window.onload = async function() {
-            if (!await checkAuth('/login', 'admin')) return;
+            if (!await checkAuth('/', 'admin')) return;
             document.getElementById('loading').classList.add('hidden');
             try {
                 const result = await makeRequest('/menus');

@@ -10,7 +10,7 @@
     <script src="/static/utils.js"></script>
     <script>
         window.onload = async function() {
-            const user = await checkAuth('/login');
+            const user = await checkAuth('/');
             if (!user) return;
 
             const container = document.getElementById('action-container');

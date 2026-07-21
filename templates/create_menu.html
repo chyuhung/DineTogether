@@ -12,7 +12,7 @@
         let imageURLs = [];
 
         window.onload = async function() {
-            if (!await checkAuth('/login', 'admin')) return;
+            if (!await checkAuth('/', 'admin')) return;
             document.getElementById('images').addEventListener('change', async (event) => {
                 const files = event.target.files;
                 if (files.length > 5) {

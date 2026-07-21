@@ -10,7 +10,7 @@
     <script src="/static/utils.js"></script>
     <script>
         window.onload = async function() {
-            if (!await checkAuth('/login', 'admin')) return;
+            if (!await checkAuth('/', 'admin')) return;
         }
 
         async function createParty(event) {

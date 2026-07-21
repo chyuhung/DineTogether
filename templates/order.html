@@ -64,7 +64,7 @@
         let allOrders = [];
 
         window.onload = async function() {
-            const user = await checkAuth('/login');
+            const user = await checkAuth('/');
             if (!user) return;
 
             document.getElementById('loading').classList.add('hidden');
