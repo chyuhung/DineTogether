@@ -1,10 +1,27 @@
-// 发起 API 请求
+let csrfToken = null;
+
+async function fetchCSRFToken() {
+    try {
+        const result = await fetch('/api/csrf-token', { credentials: 'include' });
+        if (result.ok) {
+            const data = await result.json();
+            csrfToken = data.csrf_token;
+        }
+    } catch (e) {
+        console.warn('获取 CSRF token 失败', e);
+    }
+}
+fetchCSRFToken();
+
 async function makeRequest(url, method = 'GET', body = null) {
     const options = {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
     };
+    if (csrfToken) {
+        options.headers['X-CSRF-Token'] = csrfToken;
+    }
     if (body) {
         options.body = JSON.stringify(body);
     }
@@ -29,7 +46,6 @@ async function makeRequest(url, method = 'GET', body = null) {
     }
 }
 
-// 上传图片
 async function uploadImages(files) {
     if (files.length === 0) return [];
     const formData = new FormData();
@@ -65,7 +81,6 @@ async function uploadImages(files) {
     }
 }
 
-// 删除图片
 async function deleteImage(imageUrl) {
     try {
         const result = await makeRequest('/delete-image', 'POST', { image_url: imageUrl });
@@ -77,7 +92,6 @@ async function deleteImage(imageUrl) {
     }
 }
 
-// 检查身份验证
 async function checkAuth(redirectTo, requiredRole = null) {
     const userId = localStorage.getItem('user_id');
     const role = localStorage.getItem('role') || 'guest';
@@ -93,7 +107,6 @@ async function checkAuth(redirectTo, requiredRole = null) {
     return { userId, role };
 }
 
-// 显示消息（成功或错误）
 function showMessage(elementId, message, isError = true) {
     const errorDiv = document.getElementById(elementId);
     if (errorDiv) {

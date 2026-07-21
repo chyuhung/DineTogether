@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"DineTogether/middleware"
 	"DineTogether/models"
 	"database/sql"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ValidatePassword 验证密码是否符合要求（至少6位，其他不做要求）
 func ValidatePassword(password string) error {
 	if len(password) < 6 {
 		return fmt.Errorf("密码长度必须至少6位")
@@ -20,45 +20,42 @@ func ValidatePassword(password string) error {
 	return nil
 }
 
-// Register 处理用户注册
 func Register(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
+			badRequest(c, "无效的请求数据")
 			return
 		}
 		if user.Username == "" || user.Password == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "用户名和密码不能为空", "success": false})
+			badRequest(c, "用户名和密码不能为空")
 			return
 		}
 		if err := ValidatePassword(user.Password); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
+			badRequest(c, err.Error())
 			return
 		}
-		user.Role = "guest" // 固定角色为普通用户
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("密码加密失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
+			serverError(c, "服务器错误")
 			return
 		}
-		result, err := db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", user.Username, hashedPassword, user.Role)
+		result, err := db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, 'guest')", user.Username, hashedPassword)
 		if err != nil {
-			if err.Error() == "UNIQUE constraint failed: users.username" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在", "success": false})
+			if isUniqueConstraint(err) {
+				badRequest(c, "用户名已存在")
 			} else {
 				log.Printf("注册用户失败: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
+				serverError(c, "服务器错误")
 			}
 			return
 		}
 		id, _ := result.LastInsertId()
-		c.JSON(http.StatusOK, gin.H{"message": "注册成功", "user_id": id})
+		success(c, "注册成功", gin.H{"user_id": id})
 	}
 }
 
-// Login 处理用户登录
 func Login(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var loginRequest struct {
@@ -66,23 +63,23 @@ func Login(db *sql.DB) gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&loginRequest); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
+			badRequest(c, "无效的请求数据")
 			return
 		}
 		if loginRequest.Username == "" || loginRequest.Password == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "用户名和密码不能为空", "success": false})
+			badRequest(c, "用户名和密码不能为空")
 			return
 		}
 		var user models.User
 		row := db.QueryRow("SELECT id, username, password, role FROM users WHERE username = ?", loginRequest.Username)
 		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Role); err != nil {
 			log.Printf("用户 %s 不存在: %v", loginRequest.Username, err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误", "success": false})
+			unauthorized(c, "用户名或密码错误")
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
 			log.Printf("用户 %s 密码错误", loginRequest.Username)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误", "success": false})
+			unauthorized(c, "用户名或密码错误")
 			return
 		}
 		session := sessions.Default(c)
@@ -91,25 +88,57 @@ func Login(db *sql.DB) gin.HandlerFunc {
 		session.Set("role", user.Role)
 		if err := session.Save(); err != nil {
 			log.Printf("保存 session 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
+			serverError(c, "服务器错误")
 			return
 		}
 		log.Printf("用户 %s 登录成功，角色: %s", user.Username, user.Role)
-		c.JSON(http.StatusOK, gin.H{"message": "登录成功", "user_id": user.ID, "role": user.Role})
+		success(c, "登录成功", gin.H{"user_id": user.ID, "role": user.Role})
 	}
 }
 
-// AuthMiddleware 验证管理员权限
 func AuthMiddleware(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		role := session.Get("role")
+		userID := session.Get("user_id")
 		if role != "admin" {
-			log.Printf("权限验证失败，当前角色: %v", role)
-			c.JSON(http.StatusForbidden, gin.H{"error": "需要管理员权限", "success": false})
+			forbidden(c, "需要管理员权限")
+			c.Abort()
+			return
+		}
+		var exists bool
+		row := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)", userID)
+		if err := row.Scan(&exists); err != nil || !exists {
+			session.Clear()
+			session.Save()
+			unauthorized(c, "用户不存在或会话已过期")
 			c.Abort()
 			return
 		}
 		c.Next()
+	}
+}
+
+func Logout(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Clear()
+		session.Save()
+		success(c, "退出成功")
+	}
+}
+
+func GetCSRFToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		token := session.Get("csrf_token")
+		if token == nil {
+			newToken := middleware.GenerateCSRFToken()
+			session.Set("csrf_token", newToken)
+			session.Save()
+			c.JSON(http.StatusOK, gin.H{"csrf_token": newToken, "success": true})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"csrf_token": token.(string), "success": true})
 	}
 }

@@ -2,11 +2,14 @@ package main
 
 import (
 	"DineTogether/handlers"
+	"DineTogether/middleware"
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -23,6 +26,11 @@ func main() {
 	}
 	dbPath := viper.GetString("database.path")
 	secret := viper.GetString("session.secret")
+
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Fatalf("创建数据库目录失败: %v", err)
+	}
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("无法连接到数据库: %v", err)
@@ -31,19 +39,15 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("数据库连接测试失败: %v", err)
 	}
-	// 执行迁移：添加 image_urls 字段
-	_, err = db.Exec("ALTER TABLE menus ADD COLUMN image_urls TEXT DEFAULT '[]'")
-	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
-		log.Printf("执行数据库迁移失败: %v", err)
-	}
+	runMigrations(db)
 
 	r := gin.Default()
+	r.Use(middleware.ErrorHandler())
 
-	// 配置 CORS 中间件
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{"http://localhost:8080", "http://127.0.0.1:8080"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * 60 * 60,
@@ -51,9 +55,17 @@ func main() {
 
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
+
 	store := cookie.NewStore([]byte(secret))
-	store.Options(sessions.Options{MaxAge: 86400, Path: "/"})
+	store.Options(sessions.Options{
+		MaxAge:   86400,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 	r.Use(sessions.Sessions("session", store))
+
+	rl := middleware.NewRateLimiter(10, time.Minute)
 
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
@@ -64,135 +76,142 @@ func main() {
 	r.GET("/register", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "register.html", nil)
 	})
-	r.POST("/register", handlers.Register(db))
-	r.POST("/login", handlers.Login(db))
+	r.POST("/register", middleware.RateLimitMiddleware(rl), handlers.Register(db))
+	r.POST("/login", middleware.RateLimitMiddleware(rl), handlers.Login(db))
+	r.POST("/logout", middleware.CSRFMiddleware(), handlers.Logout(db))
 	r.GET("/dashboard", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
-	})
-	r.POST("/logout", func(c *gin.Context) {
-		session := sessions.Default(c)
-		session.Clear()
-		session.Save()
-		c.JSON(http.StatusOK, gin.H{"message": "退出成功"})
-	})
-	r.GET("/api/check-party", func(c *gin.Context) {
-		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		row := db.QueryRow(`
-			SELECT p.id, p.name 
-			FROM parties p 
-			JOIN orders o ON p.id = o.party_id 
-			WHERE o.user_id = ?`, userID)
-		var partyID int
-		var partyName string
-		if err := row.Scan(&partyID, &partyName); err != nil {
-			if err == sql.ErrNoRows {
-				c.JSON(http.StatusOK, gin.H{"hasParty": false})
-				return
-			}
-			log.Printf("查询用户 Party 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败", "success": false})
-			return
-		}
-		session.Set("party_id", partyID)
-		session.Save()
-		c.JSON(http.StatusOK, gin.H{"hasParty": true, "party_id": partyID, "party_name": partyName})
-	})
-	r.GET("/api/party", func(c *gin.Context) {
-		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		row := db.QueryRow(`
-			SELECT p.id, p.name 
-			FROM parties p 
-			JOIN orders o ON p.id = o.party_id 
-			WHERE o.user_id = ?`, userID)
-		var partyID int
-		var partyName string
-		if err := row.Scan(&partyID, &partyName); err != nil {
-			if err == sql.ErrNoRows {
-				c.JSON(http.StatusOK, gin.H{"hasParty": false})
-				return
-			}
-			log.Printf("查询用户 Party 失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询 Party 失败", "success": false})
-			return
-		}
-		session.Set("party_id", partyID)
-		session.Save()
-		c.JSON(http.StatusOK, gin.H{"hasParty": true, "party_id": partyID, "party_name": partyName})
 	})
 	r.GET("/change-password", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "change_password.html", nil)
 	})
-	r.POST("/change-password", handlers.ChangePassword(db))
+	r.POST("/change-password", middleware.CSRFMiddleware(), handlers.ChangePassword(db))
 	r.GET("/join-party", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "join_party.html", nil)
 	})
-	r.POST("/join-party", handlers.JoinParty(db))
-	r.POST("/leave-party", handlers.LeaveParty(db))
+	r.POST("/join-party", middleware.CSRFMiddleware(), handlers.JoinParty(db))
+	r.POST("/leave-party", middleware.CSRFMiddleware(), handlers.LeaveParty(db))
 	r.GET("/order", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "order.html", nil)
 	})
-	r.POST("/order", handlers.PlaceOrder(db))
+	r.POST("/order", middleware.CSRFMiddleware(), handlers.PlaceOrder(db))
+	r.GET("/api/party", handlers.GetUserParty(db))
 	r.GET("/api/party-orders", handlers.GetPartyOrders(db))
-	r.DELETE("/order/:id", handlers.DeleteOrder(db))
-
-	// 管理员页面路由
-	r.GET("/menu-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "menu_manage.html", nil)
-	})
-	r.GET("/create-menu", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_menu.html", nil)
-	})
-	r.GET("/edit-menu", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_menu.html", nil)
-	})
-	r.GET("/party-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "party_manage.html", nil)
-	})
-	r.GET("/create-party", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_party.html", nil)
-	})
-	r.GET("/edit-party", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_party.html", nil)
-	})
-	r.GET("/user-manage", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "user_manage.html", nil)
-	})
-	r.GET("/create-user", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "create_user.html", nil)
-	})
-	r.GET("/edit-user", handlers.AuthMiddleware(db), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "edit_user.html", nil)
-	})
-	r.POST("/upload-image", handlers.UploadImage())
-	r.POST("/delete-image", handlers.AuthMiddleware(db), handlers.DeleteImage())
+	r.DELETE("/order/:id", middleware.CSRFMiddleware(), handlers.DeleteOrder(db))
 	r.GET("/menu-detail", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "menu_detail.html", nil)
 	})
+	r.GET("/api/csrf-token", handlers.GetCSRFToken())
 
-	// API 路由
+	adminRoutes := r.Group("")
+	adminRoutes.Use(handlers.AuthMiddleware(db))
+	{
+		adminRoutes.GET("/menu-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "menu_manage.html", nil)
+		})
+		adminRoutes.GET("/create-menu", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_menu.html", nil)
+		})
+		adminRoutes.GET("/edit-menu", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_menu.html", nil)
+		})
+		adminRoutes.GET("/party-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "party_manage.html", nil)
+		})
+		adminRoutes.GET("/create-party", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_party.html", nil)
+		})
+		adminRoutes.GET("/edit-party", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_party.html", nil)
+		})
+		adminRoutes.GET("/user-manage", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "user_manage.html", nil)
+		})
+		adminRoutes.GET("/create-user", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "create_user.html", nil)
+		})
+		adminRoutes.GET("/edit-user", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_user.html", nil)
+		})
+		adminRoutes.POST("/menus", middleware.CSRFMiddleware(), handlers.CreateMenu(db))
+
+		adminRoutes.POST("/upload-image", handlers.UploadImage())
+		adminRoutes.POST("/delete-image", handlers.DeleteImage())
+		adminRoutes.GET("/menus", handlers.GetMenus(db))
+		adminRoutes.GET("/menu/:id", handlers.GetMenu(db))
+		adminRoutes.PUT("/menu/:id", middleware.CSRFMiddleware(), handlers.UpdateMenu(db))
+		adminRoutes.DELETE("/menu/:id", middleware.CSRFMiddleware(), handlers.DeleteMenu(db))
+		adminRoutes.GET("/parties", handlers.GetParties(db))
+		adminRoutes.POST("/parties", middleware.CSRFMiddleware(), handlers.CreateParty(db))
+		adminRoutes.GET("/party/:id", handlers.GetPartyByID(db))
+		adminRoutes.PUT("/party/:id", middleware.CSRFMiddleware(), handlers.UpdateParty(db))
+		adminRoutes.DELETE("/party/:id", middleware.CSRFMiddleware(), handlers.DeleteParty(db))
+		adminRoutes.GET("/users", handlers.GetUsers(db))
+		adminRoutes.POST("/users", middleware.CSRFMiddleware(), handlers.CreateUser(db))
+		adminRoutes.GET("/user/:id", handlers.GetUserByID(db))
+		adminRoutes.PUT("/user/:id", middleware.CSRFMiddleware(), handlers.UpdateUser(db))
+		adminRoutes.DELETE("/user/:id", middleware.CSRFMiddleware(), handlers.DeleteUser(db))
+	}
+
 	r.GET("/menus", handlers.GetMenus(db))
-	r.POST("/menus", handlers.AuthMiddleware(db), handlers.CreateMenu(db))
 	r.GET("/menu/:id", handlers.GetMenu(db))
-	r.PUT("/menu/:id", handlers.AuthMiddleware(db), handlers.UpdateMenu(db))
-	r.DELETE("/menu/:id", handlers.AuthMiddleware(db), handlers.DeleteMenu(db))
-	r.GET("/parties", handlers.AuthMiddleware(db), handlers.GetParties(db))
-	r.POST("/parties", handlers.AuthMiddleware(db), handlers.CreateParty(db))
-	r.GET("/party/:id", handlers.AuthMiddleware(db), handlers.GetPartyByID(db))
-	r.PUT("/party/:id", handlers.AuthMiddleware(db), handlers.UpdateParty(db))
-	r.DELETE("/party/:id", handlers.AuthMiddleware(db), handlers.DeleteParty(db))
-	r.GET("/users", handlers.AuthMiddleware(db), handlers.GetUsers(db))
-	r.POST("/users", handlers.AuthMiddleware(db), handlers.CreateUser(db))
-	r.GET("/user/:id", handlers.AuthMiddleware(db), handlers.GetUserByID(db))
-	r.PUT("/user/:id", handlers.AuthMiddleware(db), handlers.UpdateUser(db))
-	r.DELETE("/user/:id", handlers.AuthMiddleware(db), handlers.DeleteUser(db))
 
 	port := viper.GetString("server.port")
 	if port == "" {
 		port = "8080"
 	}
-	if err := r.Run(fmt.Sprintf(":%s", port)); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)
+	}
+}
+
+func runMigrations(db *sql.DB) {
+	schema := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT NOT NULL DEFAULT 'guest'
+	);
+	CREATE TABLE IF NOT EXISTS menus (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT DEFAULT '',
+		energy_cost INTEGER NOT NULL CHECK(energy_cost > 0),
+		image_urls TEXT DEFAULT '[]'
+	);
+	CREATE TABLE IF NOT EXISTS parties (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		energy_left INTEGER NOT NULL CHECK(energy_left >= 0),
+		is_active INTEGER NOT NULL DEFAULT 1
+	);
+	CREATE TABLE IF NOT EXISTS party_members (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		party_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(party_id, user_id),
+		FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE TABLE IF NOT EXISTS orders (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		party_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		menu_id INTEGER NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE
+	);`
+	for _, stmt := range strings.Split(schema, ";") {
+		stmt = strings.TrimSpace(stmt)
+		if stmt != "" {
+			if _, err := db.Exec(stmt); err != nil {
+				log.Printf("执行迁移失败: %v", err)
+			}
+		}
 	}
 }
