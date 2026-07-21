@@ -5,13 +5,24 @@ ENV GOPROXY=${GOPROXY}
 
 WORKDIR /app
 
+# ── 依赖（只随 go.mod/go.sum 变化而失效）──
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
-
+# ── Go 源码 → 编译（只随 .go 文件变化而失效）──
+COPY main.go .
+COPY handlers/ handlers/
+COPY middleware/ middleware/
+COPY models/ models/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dinetogether .
 
+# ── 静态资源与配置（不影响编译缓存）──
+COPY templates/ templates/
+COPY static/ static/
+COPY config.yaml .
+COPY schema.sql .
+
+# ─────────────────────────────────────
 FROM docker.1ms.run/library/alpine:3.20
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
