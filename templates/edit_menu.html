@@ -2,23 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 编辑菜品</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s ease-in-out;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         let imageURLs = [];
 
@@ -83,7 +71,7 @@
                 container.className = 'relative w-24 h-24 m-1';
                 container.innerHTML = `
                     <img src="${url}" class="w-full h-full object-cover rounded">
-                    <button type="button" class="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center" onclick="removeImage('${url}')">×</button>
+                    <button type="button" class="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold hover:bg-red-700" onclick="removeImage('${url}')">×</button>
                 `;
                 preview.appendChild(container);
             });
@@ -131,19 +119,28 @@
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+<body>
+    <div class="container container-narrow">
+        <div class="card fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">编辑菜品</h1>
             <form id="form" class="flex flex-col space-y-4" onsubmit="updateMenu(event)">
-                <input id="name" type="text" placeholder="菜品名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <textarea id="description" placeholder="描述" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
-                <input id="energy_cost" type="number" placeholder="精力消耗" min="1" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="images" type="file" accept="image/jpeg,image/png" multiple class="p-3 border rounded-lg">
-                <div id="image-preview" class="flex flex-wrap"></div>
+                <input id="name" type="text" placeholder="菜品名称" class="input">
+                <textarea id="description" placeholder="描述" rows="4" class="input"></textarea>
+                <input id="energy_cost" type="number" placeholder="精力消耗" min="1" class="input">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">菜品图片（最多5张）</label>
+                    <input id="images" type="file" accept="image/jpeg,image/png" multiple class="input">
+                    <div id="image-preview" class="flex flex-wrap justify-center mt-2"></div>
+                </div>
                 <div id="error-message" class="text-center hidden"></div>
-                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">保存更改</button>
-                <button type="button" onclick="location.href='/menu-manage'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回菜单管理</button>
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    保存更改
+                </button>
+                <button type="button" onclick="location.href='/menu-manage'" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+                    返回菜单管理
+                </button>
             </form>
         </div>
     </div>

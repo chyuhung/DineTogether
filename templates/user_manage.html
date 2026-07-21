@@ -2,39 +2,47 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 用户管理</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s ease-in-out;
-        }
+        .table-wrap { overflow-x: auto; }
+        .table-wrap table { min-width: 400px; width: 100%; border-collapse: collapse; }
+        .table-wrap th, .table-wrap td { border: 1px solid #e5e7eb; padding: 10px 12px; text-align: center; font-size: 15px; }
+        .table-wrap th { background: #f9fafb; font-weight: 600; color: #374151; }
+        .table-wrap tr:hover { background: #f3f4f6; }
     </style>
     <script>
         window.onload = async function() {
             if (!await checkAuth('/login', 'admin')) return;
+            document.getElementById('loading').classList.add('hidden');
             try {
                 const result = await makeRequest('/users');
                 if (result.message === '获取用户列表成功') {
                     const tbody = document.getElementById('user-table').getElementsByTagName('tbody')[0];
+                    if (result.users.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>暂无用户数据</div></td></tr>';
+                        return;
+                    }
                     result.users.forEach(user => {
                         const row = tbody.insertRow();
                         row.innerHTML = `
-                            <td class="border px-4 py-2">${user.id}</td>
-                            <td class="border px-4 py-2">${user.username}</td>
-                            <td class="border px-4 py-2">${user.role === 'admin' ? '管理员' : '普通用户'}</td>
-                            <td class="border px-4 py-2">
-                                <button onclick="location.href='/edit-user?id=${user.id}'" class="bg-blue-600 text-white px-3 py-1 rounded btn-hover">编辑</button>
-                                <button onclick="deleteUser(${user.id})" class="bg-red-600 text-white px-3 py-1 rounded btn-hover">删除</button>
+                            <td>${user.id}</td>
+                            <td>${user.username}</td>
+                            <td><span class="${user.role === 'admin' ? 'text-purple-600' : 'text-gray-600'} font-medium">${user.role === 'admin' ? '管理员' : '普通用户'}</span></td>
+                            <td>
+                                <div class="flex flex-col sm:flex-row justify-center gap-2">
+                                    <button onclick="location.href='/edit-user?id=${user.id}'" class="btn btn-info" style="padding:8px 12px;font-size:14px;width:auto">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 0 1 2.828 0l1.586 1.586a2 2 0 0 1 0 2.828l-10 10L7 17l1.586-4.586 10-10z"/></svg>
+                                        编辑
+                                    </button>
+                                    <button onclick="deleteUser(${user.id})" class="btn btn-danger" style="padding:8px 12px;font-size:14px;width:auto">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14"/></svg>
+                                        删除
+                                    </button>
+                                </div>
                             </td>
                         `;
                     });
@@ -62,24 +70,33 @@
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-4xl">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+<body style="align-items:flex-start;padding-top:32px">
+    <div class="container container-wide">
+        <div class="card fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">用户管理</h1>
             <div id="error-message" class="text-center hidden mb-4"></div>
-            <button onclick="location.href='/create-user'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-4 btn-hover w-full">新建用户</button>
-            <table id="user-table" class="min-w-full bg-white border">
-                <thead>
-                    <tr>
-                        <th class="border px-4 py-2">ID</th>
-                        <th class="border px-4 py-2">用户名</th>
-                        <th class="border px-4 py-2">角色</th>
-                        <th class="border px-4 py-2">操作</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold mt-4 btn-hover w-full">返回仪表盘</button>
+            <div id="loading" class="loading"><div class="spinner"></div>加载中...</div>
+            <button onclick="location.href='/create-user'" class="btn btn-primary mb-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
+                新建用户
+            </button>
+            <div class="table-wrap">
+                <table id="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button onclick="location.href='/dashboard'" class="btn btn-secondary mt-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+                返回仪表盘
+            </button>
         </div>
     </div>
 </body>

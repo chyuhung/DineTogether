@@ -4,20 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 菜单管理</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover, .btn-hover:active {
-            transform: scale(0.95);
-            transition: transform 0.2s ease-in-out;
-        }
+        .table-wrap { overflow-x: auto; }
+        .table-wrap table { min-width: 500px; width: 100%; border-collapse: collapse; }
+        .table-wrap th, .table-wrap td { border: 1px solid #e5e7eb; padding: 10px 12px; text-align: center; font-size: 15px; }
+        .table-wrap th { background: #f9fafb; font-weight: 600; color: #374151; }
+        .table-wrap tr:hover { background: #f3f4f6; }
     </style>
     <script>
         const ITEMS_PER_PAGE = 10;
@@ -27,6 +22,7 @@
 
         window.onload = async function() {
             if (!await checkAuth('/login', 'admin')) return;
+            document.getElementById('loading').classList.add('hidden');
             try {
                 const result = await makeRequest('/menus');
                 if (result.message === '获取菜品列表成功') {
@@ -49,17 +45,31 @@
             const end = start + ITEMS_PER_PAGE;
             const menusToShow = allMenus.slice(start, end);
 
+            if (menusToShow.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>暂无菜品数据</div></td></tr>';
+                return;
+            }
+
             menusToShow.forEach(menu => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td class="border px-4 py-2 text-center text-base">${menu.name}</td>
-                    <td class="border px-4 py-2 text-center text-base">${menu.energy_cost}</td>
-                    <td class="border px-4 py-2 text-center text-base">${menu.image_urls.length}</td>
-                    <td class="border px-4 py-2 text-center">
-                        <div class="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-2">
-                            <button onclick="viewMenuDetail(${menu.id})" class="bg-purple-600 text-white px-4 py-2 rounded btn-hover text-base">详情</button>
-                            <button onclick="location.href='/edit-menu?id=${menu.id}'" class="bg-blue-600 text-white px-4 py-2 rounded btn-hover text-base">编辑</button>
-                            <button onclick="deleteMenu(${menu.id})" class="bg-red-600 text-white px-4 py-2 rounded btn-hover text-base">删除</button>
+                    <td>${menu.name}</td>
+                    <td>${menu.energy_cost}</td>
+                    <td>${menu.image_urls.length}</td>
+                    <td>
+                        <div class="flex flex-col sm:flex-row justify-center gap-2">
+                            <button onclick="viewMenuDetail(${menu.id})" class="btn btn-purple" style="padding:8px 12px;font-size:14px;width:auto">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm2.29-5.62A10 10 0 0 1 22 12a10 10 0 0 1-4.71 5.62M6.71 17.62A10 10 0 0 1 2 12a10 10 0 0 1 4.71-5.62"/></svg>
+                                详情
+                            </button>
+                            <button onclick="location.href='/edit-menu?id=${menu.id}'" class="btn btn-info" style="padding:8px 12px;font-size:14px;width:auto">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 0 1 2.828 0l1.586 1.586a2 2 0 0 1 0 2.828l-10 10L7 17l1.586-4.586 10-10z"/></svg>
+                                编辑
+                            </button>
+                            <button onclick="deleteMenu(${menu.id})" class="btn btn-danger" style="padding:8px 12px;font-size:14px;width:auto">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14"/></svg>
+                                删除
+                            </button>
                         </div>
                     </td>
                 `;
@@ -69,10 +79,14 @@
         function updatePagination() {
             const pagination = document.getElementById('pagination');
             pagination.innerHTML = '';
+            if (totalPages <= 1) return;
             for (let i = 1; i <= totalPages; i++) {
                 const button = document.createElement('button');
                 button.textContent = i;
-                button.className = `px-4 py-2 mx-1 rounded text-base ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} btn-hover`;
+                button.className = `px-4 py-2 mx-1 rounded text-base ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`;
+                button.style.transition = 'all 0.2s';
+                button.onmouseover = () => { if (i !== currentPage) button.style.opacity = '0.7'; };
+                button.onmouseout = () => { if (i !== currentPage) button.style.opacity = '1'; };
                 button.onclick = () => {
                     currentPage = i;
                     renderMenus(currentPage);
@@ -104,33 +118,38 @@
         function viewMenuDetail(menuId) {
             if (menuId) {
                 location.href = `/menu-detail?id=${menuId}`;
-            } else {
-                showMessage('error-message', '无效的菜品 ID！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-full sm:max-w-4xl">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">菜单管理</h1>
-            <div id="error-message" class="text-center text-base hidden mb-4"></div>
-            <button onclick="location.href='/create-menu'" class="bg-green-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full mb-4">新建菜品</button>
-            <div class="overflow-x-auto">
-                <table id="menu-table" class="min-w-full bg-white border">
+<body style="align-items:flex-start;padding-top:32px">
+    <div class="container container-wide">
+        <div class="card fade-in">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">菜单管理</h1>
+            <div id="error-message" class="text-center hidden mb-4"></div>
+            <div id="loading" class="loading"><div class="spinner"></div>加载中...</div>
+            <button onclick="location.href='/create-menu'" class="btn btn-primary mb-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/></svg>
+                新建菜品
+            </button>
+            <div class="table-wrap">
+                <table id="menu-table">
                     <thead>
                         <tr>
-                            <th class="border px-4 py-2 text-center text-base">名称</th>
-                            <th class="border px-4 py-2 text-center text-base">精力消耗</th>
-                            <th class="border px-4 py-2 text-center text-base">图片数量</th>
-                            <th class="border px-4 py-2 text-center text-base">操作</th>
+                            <th>名称</th>
+                            <th>精力消耗</th>
+                            <th>图片数量</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
-            <div id="pagination" class="flex justify-center mt-4 mb-6"></div>
-            <button onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-4 rounded-lg font-semibold text-lg btn-hover w-full">返回仪表盘</button>
+            <div id="pagination" class="flex justify-center mt-4 mb-4"></div>
+            <button onclick="location.href='/dashboard'" class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+                返回仪表盘
+            </button>
         </div>
     </div>
 </body>

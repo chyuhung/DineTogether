@@ -169,14 +169,19 @@ func JoinParty(db *sql.DB) gin.HandlerFunc {
 		var joinRequest struct {
 			PartyName string `json:"party_name"`
 			Password  string `json:"password"`
-			UserID    int    `json:"user_id"`
 		}
 		if err := c.ShouldBindJSON(&joinRequest); err != nil {
 			badRequest(c, "无效的请求数据")
 			return
 		}
-		if joinRequest.PartyName == "" || joinRequest.Password == "" || joinRequest.UserID <= 0 {
-			badRequest(c, "Party 名称、密码和用户 ID 不能为空或无效")
+		if joinRequest.PartyName == "" || joinRequest.Password == "" {
+			badRequest(c, "Party 名称和密码不能为空")
+			return
+		}
+		session := sessions.Default(c)
+		userID, ok := session.Get("user_id").(int)
+		if !ok || userID <= 0 {
+			unauthorized(c, "用户未登录")
 			return
 		}
 		var party models.Party
@@ -191,26 +196,25 @@ func JoinParty(db *sql.DB) gin.HandlerFunc {
 			unauthorized(c, "Party 密码错误")
 			return
 		}
-		session := sessions.Default(c)
 		session.Set("party_id", party.ID)
 		if err := session.Save(); err != nil {
 			log.Printf("保存 session 失败: %v", err)
 			serverError(c, "服务器错误")
 			return
 		}
-		_, err := db.Exec("INSERT OR IGNORE INTO party_members (party_id, user_id) VALUES (?, ?)", party.ID, joinRequest.UserID)
+		_, err := db.Exec("INSERT OR IGNORE INTO party_members (party_id, user_id) VALUES (?, ?)", party.ID, userID)
 		if err != nil {
-			log.Printf("记录用户 %v 加入 Party %v 失败: %v", joinRequest.UserID, party.ID, err)
+			log.Printf("记录用户 %v 加入 Party %v 失败: %v", userID, party.ID, err)
 			serverError(c, "服务器错误")
 			return
 		}
-		_, err = db.Exec("INSERT OR IGNORE INTO orders (party_id, user_id, menu_id) VALUES (?, ?, 0)", party.ID, joinRequest.UserID)
+		_, err = db.Exec("INSERT OR IGNORE INTO orders (party_id, user_id, menu_id) VALUES (?, ?, 0)", party.ID, userID)
 		if err != nil {
-			log.Printf("记录用户 %v 加入 Party %v 的订单失败: %v", joinRequest.UserID, party.ID, err)
+			log.Printf("记录用户 %v 加入 Party %v 的订单失败: %v", userID, party.ID, err)
 			serverError(c, "服务器错误")
 			return
 		}
-		log.Printf("用户 %v 加入 Party %v (%s) 成功", joinRequest.UserID, party.ID, party.Name)
+		log.Printf("用户 %v 加入 Party %v (%s) 成功", userID, party.ID, party.Name)
 		success(c, "加入 Party 成功", gin.H{
 			"party_id":   party.ID,
 			"party_name": party.Name,

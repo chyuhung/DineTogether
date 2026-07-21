@@ -2,23 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 注册</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s ease-in-out;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         async function register(event) {
             event.preventDefault();
@@ -29,7 +17,7 @@
                 return;
             }
             try {
-                const result = await makeRequest('/register', 'POST', { username, password, role: 'guest' });
+                const result = await makeRequest('/register', 'POST', { username, password });
                 if (result.message === '注册成功') {
                     showMessage('error-message', '注册成功，请登录！', false);
                     setTimeout(() => location.href = '/login', 1000);
@@ -37,21 +25,24 @@
                     showMessage('error-message', result.error || '注册失败，请重试！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">注册 DineTogether</h1>
+<body>
+    <div class="container container-narrow">
+        <div class="card fade-in">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">注册</h1>
             <form id="form" class="flex flex-col space-y-4" onsubmit="register(event)">
-                <input id="username" type="text" placeholder="用户名" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <input id="username" type="text" placeholder="用户名" class="input">
+                <input id="password" type="password" placeholder="密码（至少6位）" class="input">
                 <div id="error-message" class="text-center hidden"></div>
-                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">注册</button>
-                <p class="text-center text-gray-500">已有账号？<a href="/login" class="text-blue-600 hover:underline">登录</a></p>
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
+                    注册
+                </button>
+                <p class="text-center text-gray-500">已有账号？<a href="/login" class="text-blue-600 hover:underline font-medium">登录</a></p>
             </form>
         </div>
     </div>

@@ -2,23 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 仪表盘</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s ease-in-out;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         window.onload = async function() {
             const user = await checkAuth('/login');
@@ -26,58 +14,81 @@
 
             const container = document.getElementById('action-container');
             const title = document.getElementById('title');
+            document.getElementById('loading').classList.add('hidden');
+
             try {
                 const partyResult = await makeRequest('/api/party');
                 title.textContent = partyResult.hasParty
-                    ? `DineTogether 仪表盘 - ${partyResult.party_name}`
-                    : 'DineTogether 仪表盘';
+                    ? `仪表盘 - ${partyResult.party_name}`
+                    : '仪表盘';
 
                 if (user.role === 'admin') {
                     container.innerHTML = `
-                        <button onclick="location.href='/menu-manage'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/order'" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.2 6h11l1.2-6M7 13h10m-8 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
+                            开始点餐
+                        </button>
+                        <button onclick="location.href='/join-party'" class="btn btn-info">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
+                            加入 Party
+                        </button>
+                        <div class="border-t border-gray-200 my-2 pt-2"></div>
+                        <button onclick="location.href='/menu-manage'" class="btn btn-purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                             菜单管理
                         </button>
-                        <button onclick="location.href='/party-manage'" class="bg-blue-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/party-manage'" class="btn btn-info">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.354a4 4 0 1 0 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1zm0 0h6v-1a6 6 0 0 0-9-5.197M15 17a4 4 0 1 0-8 0"/></svg>
                             Party 管理
                         </button>
-                        <button onclick="location.href='/user-manage'" class="bg-purple-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/user-manage'" class="btn btn-purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 0a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
                             用户管理
                         </button>
-                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/change-password'" class="btn btn-warning">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
                             修改密码
                         </button>
-                        <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                        <button onclick="logout()" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
                             退出登录
                         </button>
                     `;
                 } else {
                     container.innerHTML = partyResult.hasParty ? `
-                        <button onclick="location.href='/order'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/order'" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.2 6h11l1.2-6M7 13h10m-8 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
                             开始点餐
                         </button>
-                        <button onclick="leaveParty()" class="bg-red-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="leaveParty()" class="btn btn-danger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14"/></svg>
                             离开 Party
                         </button>
-                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/change-password'" class="btn btn-warning">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
                             修改密码
                         </button>
-                        <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                        <button onclick="logout()" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
                             退出登录
                         </button>
                     ` : `
-                        <button onclick="location.href='/join-party'" class="bg-green-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/join-party'" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
                             加入 Party
                         </button>
-                        <button onclick="location.href='/change-password'" class="bg-yellow-600 text-white p-3 rounded-lg font-semibold mb-2 btn-hover w-full">
+                        <button onclick="location.href='/change-password'" class="btn btn-warning">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
                             修改密码
                         </button>
-                        <button onclick="logout()" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">
+                        <button onclick="logout()" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
                             退出登录
                         </button>
                     `;
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
 
@@ -94,7 +105,7 @@
                     showMessage('error-message', result.error || '退出登录失败，请重试！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
 
@@ -109,16 +120,17 @@
                     showMessage('error-message', result.error || '离开 Party 失败，请重试！');
                 }
             } catch (error) {
-                alert(error.message);
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
-            <h1 id="title" class="text-3xl font-bold text-center text-gray-800 mb-6">DineTogether 仪表盘</h1>
+<body>
+    <div class="container container-narrow">
+        <div class="card fade-in">
+            <h1 id="title" class="text-3xl font-bold text-center text-gray-800 mb-6">仪表盘</h1>
             <div id="error-message" class="text-center hidden mb-4"></div>
+            <div id="loading" class="loading"><div class="spinner"></div>加载中...</div>
             <div id="action-container" class="flex flex-col space-y-2"></div>
         </div>
     </div>

@@ -2,41 +2,27 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DineTogether - 加入 Party</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/utils.js"></script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        .btn-hover:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s ease-in-out;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         window.onload = async function() {
             const user = await checkAuth('/login');
             if (!user) return;
-            document.getElementById('user_id').value = user.userId;
         }
 
         async function joinParty(event) {
             event.preventDefault();
             const partyName = document.getElementById('party_name').value;
             const password = document.getElementById('password').value;
-            const userId = document.getElementById('user_id').value;
-            if (!partyName || !password || !userId) {
+            if (!partyName || !password) {
                 showMessage('error-message', '请填写 Party 名称和密码！');
                 return;
             }
             try {
-                const result = await makeRequest('/join-party', 'POST', { party_name: partyName, password, user_id: parseInt(userId) });
+                const result = await makeRequest('/join-party', 'POST', { party_name: partyName, password, user_id: 0 });
                 if (result.message === '加入 Party 成功') {
                     showMessage('error-message', '加入 Party 成功！', false);
                     setTimeout(() => location.href = '/dashboard', 1000);
@@ -49,17 +35,22 @@
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-purple-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="container mx-auto p-4 max-w-md">
-        <div class="bg-white rounded-2xl shadow-xl p-6 fade-in">
+<body>
+    <div class="container container-narrow">
+        <div class="card fade-in">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">加入 Party</h1>
             <form id="form" class="flex flex-col space-y-4" onsubmit="joinParty(event)">
-                <input id="party_name" type="text" placeholder="Party 名称" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="password" type="password" placeholder="密码" class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                <input id="user_id" type="hidden" value="">
+                <input id="party_name" type="text" placeholder="Party 名称" class="input">
+                <input id="password" type="password" placeholder="密码" class="input">
                 <div id="error-message" class="text-center hidden"></div>
-                <button type="submit" class="bg-green-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">加入 Party</button>
-                <button type="button" onclick="location.href='/dashboard'" class="bg-gray-600 text-white p-3 rounded-lg font-semibold btn-hover w-full">返回仪表盘</button>
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
+                    加入 Party
+                </button>
+                <button type="button" onclick="location.href='/dashboard'" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+                    返回仪表盘
+                </button>
             </form>
         </div>
     </div>
