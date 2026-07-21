@@ -5,7 +5,7 @@ import "encoding/json"
 type User struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
-	Password string `json:"-"`
+	Password string `json:"password"`
 	Role     string `json:"role"`
 }
 
@@ -52,7 +52,7 @@ func (m Menu) MarshalJSON() ([]byte, error) {
 type Party struct {
 	ID         int    `json:"id"`
 	Name       string `json:"name"`
-	Password   string `json:"-"`
+	Password   string `json:"password"`
 	EnergyLeft int    `json:"energy_left"`
 	IsActive   bool   `json:"is_active"`
 }
