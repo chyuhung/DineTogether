@@ -1,5 +1,7 @@
 .git
 .gitignore
 *.db
+*.sqlite
 db/
+data/
 README.md

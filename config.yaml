@@ -1,4 +1,4 @@
 database:
-  path: "./db/dine_together.db"
+  path: "./data/dine_together.sqlite"
 session:
   secret: "/6r3i639RwilicTLOwFC/VDVWGCKUwoGFLnwLZJbRu7AfZm2LV1VYtnHCTuHCHpgoV/keLjKaWAB7rAd/SD5jw=="

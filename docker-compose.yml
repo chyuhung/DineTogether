@@ -7,7 +7,7 @@ services:
     ports:
       - "8081:8080"
     volumes:
-      - dine_data:/app/db
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
@@ -16,5 +16,3 @@ services:
       start_period: 10s
       retries: 3
 
-volumes:
-  dine_data:
