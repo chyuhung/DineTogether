@@ -24,7 +24,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 		session := sessions.Default(c)
 		partyID := session.Get("party_id")
 		if partyID == nil {
-			badRequest(c, "未加入任何 Party")
+			c.JSON(200, gin.H{"error": "未加入任何 Party", "success": false})
 			return
 		}
 		var energyLeft int
