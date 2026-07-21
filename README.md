@@ -34,9 +34,12 @@ set CGO_ENABLED=1
 
 # 运行
 go run main.go
+
+# 或使用 Docker（端口 8081）
+docker compose up -d --build
 ```
 
-访问 http://localhost:8080
+访问 http://localhost:8081
 
 ## 项目结构
 

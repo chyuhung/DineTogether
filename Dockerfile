@@ -1,6 +1,11 @@
 FROM golang:1.24-alpine AS builder
 
-RUN apk add --no-cache gcc musl-dev
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
+
+RUN echo "https://mirrors.aliyun.com/alpine/v3.20/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.20/community" >> /etc/apk/repositories && \
+    apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
@@ -13,7 +18,9 @@ RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o dinetogether .
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN echo "https://mirrors.aliyun.com/alpine/v3.20/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.20/community" >> /etc/apk/repositories && \
+    apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
