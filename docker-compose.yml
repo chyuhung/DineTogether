@@ -1,13 +1,20 @@
-version: "3.8"
-
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        GOPROXY: https://goproxy.cn,https://goproxy.io,direct
     ports:
       - "8081:8080"
     volumes:
       - dine_data:/app/db
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
 
 volumes:
   dine_data:

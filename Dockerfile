@@ -1,11 +1,7 @@
 FROM golang:1.24-alpine AS builder
 
-ARG GOPROXY=https://goproxy.cn,direct
+ARG GOPROXY=https://goproxy.cn,https://goproxy.io,direct
 ENV GOPROXY=${GOPROXY}
-
-RUN echo "https://mirrors.aliyun.com/alpine/v3.20/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.20/community" >> /etc/apk/repositories && \
-    apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
@@ -14,12 +10,11 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o dinetogether .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dinetogether .
 
 FROM alpine:3.20
 
-RUN echo "https://mirrors.aliyun.com/alpine/v3.20/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.20/community" >> /etc/apk/repositories && \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
     apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
@@ -33,5 +28,8 @@ COPY --from=builder /app/schema.sql .
 EXPOSE 8080
 
 VOLUME ["/app/db"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:8080/api/health || exit 1
 
 CMD ["./dinetogether"]
