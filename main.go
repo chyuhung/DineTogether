@@ -143,8 +143,6 @@ func main() {
 
 		adminRoutes.POST("/upload-image", handlers.UploadImage())
 		adminRoutes.POST("/delete-image", handlers.DeleteImage())
-		adminRoutes.GET("/menus", handlers.GetMenus(db))
-		adminRoutes.GET("/menu/:id", handlers.GetMenu(db))
 		adminRoutes.PUT("/menu/:id", middleware.CSRFMiddleware(), handlers.UpdateMenu(db))
 		adminRoutes.DELETE("/menu/:id", middleware.CSRFMiddleware(), handlers.DeleteMenu(db))
 		adminRoutes.GET("/parties", handlers.GetParties(db))
