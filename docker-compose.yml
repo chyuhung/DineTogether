@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8080"
+    volumes:
+      - dine_data:/app/db
+    restart: unless-stopped
+
+volumes:
+  dine_data:
