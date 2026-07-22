@@ -20,7 +20,7 @@ func GetMenus(db *sql.DB) gin.HandlerFunc {
 		}
 		defer rows.Close()
 
-		var menus []models.Menu
+		menus := make([]models.Menu, 0)
 		for rows.Next() {
 			var menu models.Menu
 			var description, imageURLs sql.NullString

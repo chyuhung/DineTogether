@@ -48,7 +48,7 @@ func GetPartyOrders(db *sql.DB) gin.HandlerFunc {
 		}
 		defer rows.Close()
 
-		var orders []OrderItem
+		orders := make([]OrderItem, 0)
 		for rows.Next() {
 			var order OrderItem
 			var imageURLs sql.NullString

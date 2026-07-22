@@ -80,7 +80,7 @@ func GetUsers(db *sql.DB) gin.HandlerFunc {
 		}
 		defer rows.Close()
 
-		var users []models.User
+		users := make([]models.User, 0)
 		for rows.Next() {
 			var user models.User
 			if err := rows.Scan(&user.ID, &user.Username, &user.Role); err != nil {

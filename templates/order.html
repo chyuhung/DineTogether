@@ -72,7 +72,7 @@
             try {
                 const menuResult = await makeRequest('/menus');
                 if (menuResult.message === '获取菜品列表成功') {
-                    allMenus = menuResult.menus;
+                    allMenus = menuResult.menus || [];
                     totalMenuPages = Math.ceil(allMenus.length / ITEMS_PER_PAGE);
                     renderMenus(currentMenuPage);
                     updateMenuPagination();

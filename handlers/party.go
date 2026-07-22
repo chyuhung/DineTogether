@@ -53,7 +53,7 @@ func GetParties(db *sql.DB) gin.HandlerFunc {
 		}
 		defer rows.Close()
 
-		var parties []models.Party
+		parties := make([]models.Party, 0)
 		for rows.Next() {
 			var party models.Party
 			if err := rows.Scan(&party.ID, &party.Name, &party.EnergyLeft, &party.IsActive); err != nil {
