@@ -24,15 +24,7 @@
                     : '仪表盘';
 
                 if (user.role === 'admin') {
-                    container.innerHTML = `
-                        <button onclick="location.href='/order'" class="btn btn-primary">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.2 6h11l1.2-6M7 13h10m-8 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
-                            开始点餐
-                        </button>
-                        <button onclick="location.href='/join-party'" class="btn btn-info">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
-                            加入 Party
-                        </button>
+                    const adminButtons = `
                         <div class="border-t border-gray-200 my-2 pt-2"></div>
                         <button onclick="location.href='/menu-manage'" class="btn btn-purple">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -54,6 +46,23 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
                             退出登录
                         </button>
+                    `;
+                    container.innerHTML = partyResult.hasParty ? `
+                        <button onclick="location.href='/order'" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.2 6h11l1.2-6M7 13h10m-8 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
+                            开始点餐
+                        </button>
+                        <button onclick="leaveParty()" class="btn btn-danger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14"/></svg>
+                            离开 Party
+                        </button>
+                        ${adminButtons}
+                    ` : `
+                        <button onclick="location.href='/join-party'" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 6v4m0 0v4m0-4h-4m4 0h4"/></svg>
+                            加入 Party
+                        </button>
+                        ${adminButtons}
                     `;
                 } else {
                     container.innerHTML = partyResult.hasParty ? `
