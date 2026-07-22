@@ -74,8 +74,20 @@ func main() {
 	rl := middleware.NewRateLimiter(10, time.Minute)
 
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
+		var adminCount int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&adminCount)
+		c.HTML(http.StatusOK, "index.html", gin.H{"needsSetup": adminCount == 0})
 	})
+	r.GET("/setup", func(c *gin.Context) {
+		var adminCount int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&adminCount)
+		if adminCount > 0 {
+			c.Redirect(http.StatusFound, "/")
+			return
+		}
+		c.HTML(http.StatusOK, "setup.html", nil)
+	})
+	r.POST("/setup", middleware.RateLimitMiddleware(rl), handlers.SetupAdmin(db))
 	r.GET("/login", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "login.html", nil)
 	})
@@ -173,6 +185,7 @@ func main() {
 		adminRoutes.GET("/user/:id", handlers.GetUserByID(db))
 		adminRoutes.PUT("/user/:id", middleware.CSRFMiddleware(), handlers.UpdateUser(db))
 		adminRoutes.DELETE("/user/:id", middleware.CSRFMiddleware(), handlers.DeleteUser(db))
+		adminRoutes.PUT("/user/:id/role", middleware.CSRFMiddleware(), handlers.UpdateUserRole(db))
 	}
 
 	r.GET("/menus", handlers.GetMenus(db))

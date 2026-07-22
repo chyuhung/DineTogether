@@ -20,6 +20,49 @@ func ValidatePassword(password string) error {
 	return nil
 }
 
+func SetupAdmin(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&count)
+		if count > 0 {
+			badRequest(c, "管理员已存在")
+			return
+		}
+		var user models.User
+		if err := c.ShouldBindJSON(&user); err != nil {
+			badRequest(c, "无效的请求数据")
+			return
+		}
+		if user.Username == "" || user.Password == "" {
+			badRequest(c, "用户名和密码不能为空")
+			return
+		}
+		if err := ValidatePassword(user.Password); err != nil {
+			badRequest(c, err.Error())
+			return
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("密码加密失败: %v", err)
+			serverError(c, "服务器错误")
+			return
+		}
+		result, err := db.Exec("INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')", user.Username, hashedPassword)
+		if err != nil {
+			if isUniqueConstraint(err) {
+				badRequest(c, "用户名已存在")
+			} else {
+				log.Printf("创建管理员失败: %v", err)
+				serverError(c, "服务器错误")
+			}
+			return
+		}
+		id, _ := result.LastInsertId()
+		log.Printf("首次管理员创建成功: %s (id=%d)", user.Username, id)
+		success(c, "管理员创建成功", gin.H{"user_id": id})
+	}
+}
+
 func Register(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user models.User

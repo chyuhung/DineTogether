@@ -3,6 +3,7 @@ package handlers
 import (
 	"DineTogether/models"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/gin-contrib/sessions"
@@ -165,6 +166,44 @@ func UpdateUser(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		success(c, "用户更新成功")
+	}
+}
+
+func UpdateUserRole(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req struct {
+			Role string `json:"role"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || (req.Role != "admin" && req.Role != "guest") {
+			badRequest(c, "无效的角色")
+			return
+		}
+		session := sessions.Default(c)
+		currentUserID := session.Get("user_id")
+		if currentUserID != nil {
+			currStr := fmt.Sprintf("%v", currentUserID)
+			if currStr == id {
+				badRequest(c, "不能修改自己的角色")
+				return
+			}
+		}
+		result, err := db.Exec("UPDATE users SET role = ? WHERE id = ?", req.Role, id)
+		if err != nil {
+			log.Printf("更新用户 %s 角色失败: %v", id, err)
+			serverError(c, "服务器错误")
+			return
+		}
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			notFound(c, "资源未找到")
+			return
+		}
+		label := "管理员"
+		if req.Role == "guest" {
+			label = "普通用户"
+		}
+		success(c, fmt.Sprintf("已设为%s", label))
 	}
 }
 

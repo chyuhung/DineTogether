@@ -29,12 +29,17 @@
                     }
                     result.users.forEach(user => {
                         const row = tbody.insertRow();
+                        const isAdmin = user.role === 'admin';
                         row.innerHTML = `
                             <td>${user.id}</td>
                             <td>${user.username}</td>
-                            <td><span class="${user.role === 'admin' ? 'text-purple-600' : 'text-gray-600'} font-medium">${user.role === 'admin' ? '管理员' : '普通用户'}</span></td>
+                            <td><span class="${isAdmin ? 'text-purple-600' : 'text-gray-600'} font-medium">${isAdmin ? '管理员' : '普通用户'}</span></td>
                             <td>
                                 <div class="flex flex-col sm:flex-row justify-center gap-2">
+                                    <button onclick="toggleRole(${user.id}, '${user.role}')" class="btn ${isAdmin ? 'btn-info' : 'btn-purple'}" style="padding:8px 12px;font-size:14px;width:auto">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">${isAdmin ? '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>' : '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 6v4m0 0v4m0-4h-4m4 0h4"/>'}</svg>
+                                        ${isAdmin ? '取消管理员' : '设为管理员'}
+                                    </button>
                                     <button onclick="location.href='/edit-user?id=${user.id}'" class="btn btn-info" style="padding:8px 12px;font-size:14px;width:auto">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 0 1 2.828 0l1.586 1.586a2 2 0 0 1 0 2.828l-10 10L7 17l1.586-4.586 10-10z"/></svg>
                                         编辑
@@ -49,6 +54,23 @@
                     });
                 } else {
                     showMessage('error-message', result.error || '加载用户列表失败！');
+                }
+            } catch (error) {
+                showMessage('error-message', error.message || '网络错误，请稍后重试！');
+            }
+        }
+
+        async function toggleRole(userId, currentRole) {
+            const newRole = currentRole === 'admin' ? 'guest' : 'admin';
+            const label = newRole === 'admin' ? '管理员' : '普通用户';
+            if (!confirm(`确定将用户${currentRole === 'admin' ? '降级为普通用户' : '提升为管理员'}吗？`)) return;
+            try {
+                const result = await makeRequest(`/user/${userId}/role`, 'PUT', { role: newRole });
+                if (result.message) {
+                    showMessage('error-message', `${label}设置成功！`, false);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showMessage('error-message', result.error || '角色切换失败，请重试！');
                 }
             } catch (error) {
                 showMessage('error-message', error.message || '网络错误，请稍后重试！');
