@@ -46,7 +46,7 @@ docker compose up -d --build
 ```
 DineTogether/
 ├── main.go                 # 入口，路由注册，数据库迁移
-├── config.yaml             # 数据库路径、Session 密钥
+├── config.yaml             # 数据库路径、上传目录、Session 密钥
 ├── schema.sql              # 数据库结构定义
 ├── handlers/               # 业务逻辑处理
 │   ├── auth.go             # 登录/注册/中间件
@@ -65,10 +65,25 @@ DineTogether/
 │   └── models.go           # 数据模型
 ├── templates/              # HTML 模板
 ├── static/
+│   ├── style.css           # 全局样式
 │   ├── utils.js            # 前端工具函数
-│   └── uploads/            # 菜品图片
-└── db/                     # SQLite 数据库文件（自动创建）
+│   └── placeholder.jpg     # 默认占位图
+└── data/                   # 用户数据（迁移时复制整个目录）
+    ├── dine_together.sqlite # SQLite 数据库
+    └── uploads/             # 用户上传的菜品图片
 ```
+
+## 数据迁移
+
+所有用户数据统一存储在项目根目录的 `data/` 文件夹中：
+
+```
+data/
+├── dine_together.sqlite   ← 数据库
+└── uploads/               ← 上传图片
+```
+
+迁移部署时只需复制整个 `data/` 目录到新服务器，重新 `docker compose up -d` 即可恢复所有数据。
 
 ## API 接口
 

@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	UploadDir    = "static/uploads"
-	MaxImages    = 5
-	MaxFileSize  = 2 << 20
-	Placeholder  = "/static/placeholder.jpg"
+	MaxImages   = 5
+	MaxFileSize = 2 << 20
+	Placeholder = "/static/placeholder.jpg"
+	urlPrefix   = "/uploads"
 )
 
 var allowedExts = map[string]bool{
@@ -26,7 +26,7 @@ var allowedExts = map[string]bool{
 	".png":  true,
 }
 
-func UploadImage() gin.HandlerFunc {
+func UploadImage(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
@@ -43,7 +43,7 @@ func UploadImage() gin.HandlerFunc {
 			return
 		}
 		var imageURLs []string
-		if err := os.MkdirAll(UploadDir, 0755); err != nil {
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
 			log.Printf("创建上传目录失败: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
@@ -59,7 +59,7 @@ func UploadImage() gin.HandlerFunc {
 				return
 			}
 			filename := fmt.Sprintf("%d-%s%s", time.Now().UnixNano(), strings.TrimSuffix(file.Filename, ext), ext)
-			dstPath := filepath.Join(UploadDir, filename)
+			dstPath := filepath.Join(uploadDir, filename)
 			src, err := file.Open()
 			if err != nil {
 				log.Printf("打开上传文件失败: %v", err)
@@ -82,13 +82,13 @@ func UploadImage() gin.HandlerFunc {
 			}
 			src.Close()
 			dst.Close()
-			imageURLs = append(imageURLs, fmt.Sprintf("/static/uploads/%s", filename))
+			imageURLs = append(imageURLs, fmt.Sprintf("%s/%s", urlPrefix, filename))
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "图片上传成功", "image_urls": imageURLs})
 	}
 }
 
-func DeleteImage() gin.HandlerFunc {
+func DeleteImage(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var request struct {
 			ImageURL string `json:"image_url"`
@@ -97,17 +97,22 @@ func DeleteImage() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "success": false})
 			return
 		}
-		if !strings.HasPrefix(request.ImageURL, "/static/uploads/") {
+		if !strings.HasPrefix(request.ImageURL, urlPrefix+"/") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的图片路径", "success": false})
 			return
 		}
-		filename := strings.TrimPrefix(request.ImageURL, "/")
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
+		filename := strings.TrimPrefix(request.ImageURL, urlPrefix+"/")
+		if filename == "" || strings.Contains(filename, "..") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的图片路径", "success": false})
+			return
+		}
+		fullPath := filepath.Join(uploadDir, filename)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "图片不存在", "success": false})
 			return
 		}
-		if err := os.Remove(filename); err != nil {
-			log.Printf("删除图片 %s 失败: %v", filename, err)
+		if err := os.Remove(fullPath); err != nil {
+			log.Printf("删除图片 %s 失败: %v", fullPath, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "服务器错误", "success": false})
 			return
 		}

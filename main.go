@@ -25,11 +25,15 @@ func main() {
 		log.Fatalf("读取配置文件失败: %v", err)
 	}
 	dbPath := viper.GetString("database.path")
+	uploadDir := viper.GetString("upload.dir")
 	secret := viper.GetString("session.secret")
 
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		log.Fatalf("创建数据库目录失败: %v", err)
+	}
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Fatalf("创建上传目录失败: %v", err)
 	}
 
 	dsn := "file:" + dbPath + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
@@ -61,6 +65,7 @@ func main() {
 
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
+	r.Static("/uploads", uploadDir)
 
 	store := cookie.NewStore([]byte(secret))
 	store.Options(sessions.Options{
@@ -171,8 +176,8 @@ func main() {
 		})
 		adminRoutes.POST("/menus", middleware.CSRFMiddleware(), handlers.CreateMenu(db))
 
-		adminRoutes.POST("/upload-image", handlers.UploadImage())
-		adminRoutes.POST("/delete-image", handlers.DeleteImage())
+		adminRoutes.POST("/upload-image", handlers.UploadImage(uploadDir))
+		adminRoutes.POST("/delete-image", handlers.DeleteImage(uploadDir))
 		adminRoutes.PUT("/menu/:id", middleware.CSRFMiddleware(), handlers.UpdateMenu(db))
 		adminRoutes.DELETE("/menu/:id", middleware.CSRFMiddleware(), handlers.DeleteMenu(db))
 		adminRoutes.GET("/parties", handlers.GetParties(db))
